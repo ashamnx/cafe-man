@@ -17,11 +17,13 @@ import (
 const geminiModel = "gemini-2.5-flash"
 const geminiEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/" + geminiModel + ":generateContent"
 
-const billExtractionPrompt = `You are a bill/invoice data extraction assistant. Analyze this vendor bill image and extract all line items.
+const billExtractionPrompt = `You are a bill/invoice data extraction assistant. Analyze this vendor bill image and extract the vendor details and all line items.
 
 Return a JSON object with this exact structure (no markdown, no code fences, just raw JSON):
 {
   "vendor_name": "name of the vendor/supplier if visible",
+  "vendor_phone": "vendor phone number from the bill header if visible",
+  "vendor_address": "vendor address from the bill header if visible",
   "bill_number": "invoice/bill number if visible",
   "bill_date": "date in YYYY-MM-DD format if visible",
   "total_amount": 123.45,
@@ -40,7 +42,9 @@ Rules:
 - Extract EVERY line item from the bill
 - For quantity, unit_price, and total: use numbers (not strings). Use null if not visible.
 - For unit: normalize to one of: kg, g, liter, ml, piece, pack, box, bottle. Use the closest match.
-- If a field is not visible or unclear, use null
+- If a field is not visible or unclear, use an empty string for text fields or null for numbers
+- For vendor_phone: capture just the digits and common separators (no labels like "Phone:" or "Tel:")
+- For vendor_address: return a single line — collapse multi-line postal addresses by joining lines with ", "
 - Do NOT include tax/service charge/discount as line items
 - Return ONLY the JSON object, no other text`
 

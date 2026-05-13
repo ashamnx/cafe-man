@@ -61,6 +61,7 @@ func (h *BillHandler) RegisterRoutes(mux *http.ServeMux, authMw, orgMw, tenantMw
 	mux.Handle("DELETE /bills/{id}/items/{itemId}", wrap(h.deleteItem, "bills", "update"))
 	mux.Handle("POST /bills/{id}/map/{itemId}", wrap(h.mapItem, "bills", "update"))
 	mux.Handle("POST /bills/{id}/create-ingredient/{itemId}", wrap(h.createIngredientFromItem, "bills", "update"))
+	mux.Handle("POST /bills/{id}/create-vendor", wrap(h.createVendorFromBill, "vendors", "create"))
 	mux.Handle("POST /bills/{id}/apply", wrap(h.applyBill, "bills", "update"))
 }
 
@@ -189,6 +190,20 @@ func (h *BillHandler) handleUpload(w http.ResponseWriter, r *http.Request) {
 		slog.Error("ai extraction failed", "error", err)
 		billRepo.UpdateStatus(r.Context(), bill.ID, "failed")
 	} else {
+		// Auto-link vendor if user didn't pick one and AI detected a match.
+		if vendorID == nil && extraction.VendorName != "" {
+			vendorRepo := repository.NewVendorRepo(pool)
+			allVendors, _ := vendorRepo.List(r.Context(), "", "")
+			if matched := findMatchingVendor(extraction.VendorName, allVendors); matched != nil {
+				if err := billRepo.Update(r.Context(), bill.ID, &matched.ID, bill.BillNumber, bill.BillDate, bill.TotalAmount, bill.Notes, bill.ImagePath); err != nil {
+					slog.Error("auto-link vendor", "error", err)
+				} else {
+					bill.VendorID = &matched.ID
+					bill.Vendor = &model.Vendor{ID: matched.ID, Name: matched.Name}
+				}
+			}
+		}
+
 		raw, _ := json.Marshal(extraction)
 		billRepo.UpdateAIResponse(r.Context(), bill.ID, raw, "processing")
 
@@ -256,11 +271,31 @@ func (h *BillHandler) show(w http.ResponseWriter, r *http.Request) {
 	unitList, _ := ingredientRepo.ListUnits(r.Context())
 	categories, _ := ingredientRepo.ListCategories(r.Context())
 
+	vendorRepo := repository.NewVendorRepo(pool)
+	vendors, _ := vendorRepo.List(r.Context(), "", "")
+
+	// Decode AI extraction (if any) so the template can show the auto-match
+	// badge or the single-tap "Create vendor" banner.
+	var extraction model.AIBillExtraction
+	if len(bill.AIRawResponse) > 0 {
+		if err := json.Unmarshal(bill.AIRawResponse, &extraction); err != nil {
+			slog.Error("decode ai_raw_response", "error", err, "bill_id", id)
+		}
+	}
+
+	vendorAutoMatched := bill.EntryType == "scan" &&
+		bill.Vendor != nil &&
+		extraction.VendorName != "" &&
+		findMatchingVendor(extraction.VendorName, []model.Vendor{*bill.Vendor}) != nil
+
 	h.render.HTML(w, r, "bill_detail.html", map[string]any{
 		"Bill":                 bill,
 		"Ingredients":          ingredients,
 		"Units":                unitList,
 		"IngredientCategories": categories,
+		"Vendors":              vendors,
+		"AIExtraction":         extraction,
+		"VendorAutoMatched":    vendorAutoMatched,
 		"Title":                "Bill " + bill.BillNumber,
 	})
 }
@@ -749,6 +784,73 @@ func (h *BillHandler) createIngredientFromItem(w http.ResponseWriter, r *http.Re
 	http.Redirect(w, r, "/bills/"+billID.String(), http.StatusSeeOther)
 }
 
+// createVendorFromBill creates a vendor using the AI-extracted vendor details
+// stored on the bill, then links the bill to that new vendor.
+func (h *BillHandler) createVendorFromBill(w http.ResponseWriter, r *http.Request) {
+	pool := middleware.TenantPool(r.Context())
+	billRepo := repository.NewBillRepo(pool)
+	vendorRepo := repository.NewVendorRepo(pool)
+
+	billID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	bill, err := billRepo.GetByID(r.Context(), billID)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	if bill.VendorID != nil {
+		http.Error(w, "Bill already has a vendor", http.StatusConflict)
+		return
+	}
+
+	var extraction model.AIBillExtraction
+	if len(bill.AIRawResponse) > 0 {
+		if err := json.Unmarshal(bill.AIRawResponse, &extraction); err != nil {
+			slog.Error("decode ai_raw_response", "error", err, "bill_id", billID)
+		}
+	}
+
+	name := strings.TrimSpace(extraction.VendorName)
+	if name == "" {
+		http.Error(w, "No vendor name detected on this bill", http.StatusBadRequest)
+		return
+	}
+
+	vendor, err := vendorRepo.Create(r.Context(), repository.CreateVendorParams{
+		Name:    name,
+		Phone:   strings.TrimSpace(extraction.VendorPhone),
+		Address: strings.TrimSpace(extraction.VendorAddress),
+	})
+	if err != nil {
+		slog.Error("create vendor from bill", "error", err)
+		http.Error(w, "Failed to create vendor", http.StatusInternalServerError)
+		return
+	}
+
+	oldBill := *bill
+	if err := billRepo.Update(r.Context(), billID, &vendor.ID, bill.BillNumber, bill.BillDate, bill.TotalAmount, bill.Notes, bill.ImagePath); err != nil {
+		slog.Error("link bill to new vendor", "error", err)
+		http.Error(w, "Failed to link vendor", http.StatusInternalServerError)
+		return
+	}
+
+	logAudit(r.Context(), pool, r, "create", "vendor", vendor.ID, nil, marshalAudit(vendor))
+	newBill, _ := billRepo.GetByID(r.Context(), billID)
+	logAudit(r.Context(), pool, r, "update", "bill", billID, marshalAudit(&oldBill), marshalAudit(newBill))
+
+	if r.Header.Get("HX-Request") == "true" {
+		w.Header().Set("HX-Redirect", "/bills/"+billID.String())
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	http.Redirect(w, r, "/bills/"+billID.String(), http.StatusSeeOther)
+}
+
 func (h *BillHandler) handleManualEntry(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		http.Error(w, "Invalid form", http.StatusBadRequest)
@@ -925,6 +1027,28 @@ func findMatchingIngredient(name string, ingredients []model.Ingredient) *model.
 		ingName := strings.ToLower(ing.Name)
 		if strings.Contains(name, ingName) || strings.Contains(ingName, name) {
 			return &ingredients[i]
+		}
+	}
+	return nil
+}
+
+func findMatchingVendor(name string, vendors []model.Vendor) *model.Vendor {
+	n := strings.ToLower(strings.TrimSpace(name))
+	if n == "" {
+		return nil
+	}
+	for i, v := range vendors {
+		if strings.ToLower(v.Name) == n {
+			return &vendors[i]
+		}
+	}
+	for i, v := range vendors {
+		vn := strings.ToLower(v.Name)
+		if vn == "" {
+			continue
+		}
+		if strings.Contains(n, vn) || strings.Contains(vn, n) {
+			return &vendors[i]
 		}
 	}
 	return nil

@@ -44,6 +44,7 @@ func (h *BillAPIHandler) RegisterRoutes(mux *http.ServeMux, wrap func(http.Handl
 	mux.Handle("DELETE /api/v1/bills/{id}/items/{itemId}", wrap(h.deleteItem, "bills", "update"))
 	mux.Handle("POST /api/v1/bills/{id}/map/{itemId}", wrap(h.mapItem, "bills", "update"))
 	mux.Handle("POST /api/v1/bills/{id}/create-ingredient/{itemId}", wrap(h.createIngredientFromItem, "bills", "update"))
+	mux.Handle("POST /api/v1/bills/{id}/create-vendor", wrap(h.createVendorFromBill, "vendors", "create"))
 	mux.Handle("POST /api/v1/bills/{id}/apply", wrap(h.applyBill, "bills", "update"))
 }
 
@@ -155,6 +156,20 @@ func (h *BillAPIHandler) upload(w http.ResponseWriter, r *http.Request) {
 		slog.Error("ai extraction failed", "error", err)
 		billRepo.UpdateStatus(r.Context(), bill.ID, "failed")
 	} else {
+		// Auto-link vendor if caller didn't pick one and AI detected a match.
+		if vendorID == nil && extraction.VendorName != "" {
+			vendorRepo := repository.NewVendorRepo(pool)
+			allVendors, _ := vendorRepo.List(r.Context(), "", "")
+			if matched := apiFindMatchingVendor(extraction.VendorName, allVendors); matched != nil {
+				if err := billRepo.Update(r.Context(), bill.ID, &matched.ID, bill.BillNumber, bill.BillDate, bill.TotalAmount, bill.Notes, bill.ImagePath); err != nil {
+					slog.Error("auto-link vendor", "error", err)
+				} else {
+					bill.VendorID = &matched.ID
+					bill.Vendor = &model.Vendor{ID: matched.ID, Name: matched.Name}
+				}
+			}
+		}
+
 		raw, _ := json.Marshal(extraction)
 		billRepo.UpdateAIResponse(r.Context(), bill.ID, raw, "processing")
 
@@ -665,6 +680,77 @@ func (h *BillAPIHandler) createIngredientFromItem(w http.ResponseWriter, r *http
 	writeJSON(w, http.StatusCreated, ing)
 }
 
+// createVendorFromBill creates a vendor using the AI-extracted vendor details
+// stored on the bill, then links the bill to that new vendor.
+func (h *BillAPIHandler) createVendorFromBill(w http.ResponseWriter, r *http.Request) {
+	pool := middleware.TenantPool(r.Context())
+	billRepo := repository.NewBillRepo(pool)
+	vendorRepo := repository.NewVendorRepo(pool)
+
+	billID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+
+	bill, err := billRepo.GetByID(r.Context(), billID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "bill not found")
+		return
+	}
+
+	if bill.VendorID != nil {
+		writeError(w, http.StatusConflict, "bill already has a vendor")
+		return
+	}
+
+	var extraction model.AIBillExtraction
+	if len(bill.AIRawResponse) > 0 {
+		if err := json.Unmarshal(bill.AIRawResponse, &extraction); err != nil {
+			slog.Error("api: decode ai_raw_response", "error", err, "bill_id", billID)
+		}
+	}
+
+	name := strings.TrimSpace(extraction.VendorName)
+	if name == "" {
+		writeError(w, http.StatusBadRequest, "no vendor name detected on this bill")
+		return
+	}
+
+	vendor, err := vendorRepo.Create(r.Context(), repository.CreateVendorParams{
+		Name:    name,
+		Phone:   strings.TrimSpace(extraction.VendorPhone),
+		Address: strings.TrimSpace(extraction.VendorAddress),
+	})
+	if err != nil {
+		slog.Error("api: create vendor from bill", "error", err)
+		writeError(w, http.StatusInternalServerError, "failed to create vendor")
+		return
+	}
+
+	if err := billRepo.Update(r.Context(), billID, &vendor.ID, bill.BillNumber, bill.BillDate, bill.TotalAmount, bill.Notes, bill.ImagePath); err != nil {
+		slog.Error("api: link bill to new vendor", "error", err)
+		writeError(w, http.StatusInternalServerError, "failed to link vendor")
+		return
+	}
+
+	auditRepo := repository.NewAuditRepo(pool)
+	if vendorJSON, err := json.Marshal(vendor); err == nil {
+		auditRepo.Log(r.Context(), middleware.GetUserID(r.Context()), middleware.GetUserName(r.Context()), "create", "vendor", vendor.ID, nil, vendorJSON, middleware.GetIPAddress(r))
+	}
+
+	updated, _ := billRepo.GetByID(r.Context(), billID)
+	items, _ := billRepo.GetBillItems(r.Context(), billID)
+	if updated != nil {
+		updated.Items = items
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"vendor": vendor,
+		"bill":   updated,
+	})
+}
+
 func (h *BillAPIHandler) applyBill(w http.ResponseWriter, r *http.Request) {
 	pool := middleware.TenantPool(r.Context())
 	billRepo := repository.NewBillRepo(pool)
@@ -749,6 +835,28 @@ func apiFindMatchingIngredient(name string, ingredients []model.Ingredient) *mod
 		ingName := strings.ToLower(ing.Name)
 		if strings.Contains(name, ingName) || strings.Contains(ingName, name) {
 			return &ingredients[i]
+		}
+	}
+	return nil
+}
+
+func apiFindMatchingVendor(name string, vendors []model.Vendor) *model.Vendor {
+	n := strings.ToLower(strings.TrimSpace(name))
+	if n == "" {
+		return nil
+	}
+	for i, v := range vendors {
+		if strings.ToLower(v.Name) == n {
+			return &vendors[i]
+		}
+	}
+	for i, v := range vendors {
+		vn := strings.ToLower(v.Name)
+		if vn == "" {
+			continue
+		}
+		if strings.Contains(n, vn) || strings.Contains(vn, n) {
+			return &vendors[i]
 		}
 	}
 	return nil
