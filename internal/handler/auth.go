@@ -88,6 +88,8 @@ func (h *AuthHandler) handleRegister(w http.ResponseWriter, r *http.Request) {
 	h.sessions.Put(r.Context(), "user_name", result.User.FullName)
 	h.sessions.Put(r.Context(), "org_name", result.Org.Name)
 	h.sessions.Put(r.Context(), "org_logo_key", result.Org.LogoImageKey)
+	h.sessions.Put(r.Context(), "org_slug", result.Org.Slug)
+	h.sessions.Put(r.Context(), "org_currency_symbol", result.Org.CurrencySymbol)
 
 	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 }
@@ -131,6 +133,8 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		h.sessions.Put(r.Context(), "org_db", orgs[0].DBName)
 		h.sessions.Put(r.Context(), "org_name", orgs[0].Name)
 		h.sessions.Put(r.Context(), "org_logo_key", orgs[0].LogoImageKey)
+		h.sessions.Put(r.Context(), "org_slug", orgs[0].Slug)
+		h.sessions.Put(r.Context(), "org_currency_symbol", orgs[0].CurrencySymbol)
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 		return
 	}
@@ -175,6 +179,8 @@ func (h *AuthHandler) handleSelectOrg(w http.ResponseWriter, r *http.Request) {
 			h.sessions.Put(r.Context(), "org_db", org.DBName)
 			h.sessions.Put(r.Context(), "org_name", org.Name)
 			h.sessions.Put(r.Context(), "org_logo_key", org.LogoImageKey)
+			h.sessions.Put(r.Context(), "org_slug", org.Slug)
+			h.sessions.Put(r.Context(), "org_currency_symbol", org.CurrencySymbol)
 			http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 			return
 		}

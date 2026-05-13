@@ -14,6 +14,33 @@
     </div>
 </div>
 
+{{if .OrgSlug}}
+<div x-data="shareLink('/menu/{{.OrgSlug}}')"
+     class="mb-8 bg-surface border border-stone-200 rounded-2xl shadow-sm p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+    <div class="flex items-center gap-3 flex-1 min-w-0">
+        <span class="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <i data-lucide="globe" class="w-4 h-4"></i>
+        </span>
+        <div class="min-w-0">
+            <div class="text-xs font-medium text-stone-500 uppercase tracking-wider">Public menu URL</div>
+            <div class="font-mono text-sm text-stone-800 truncate" x-text="url"></div>
+        </div>
+    </div>
+    <div class="flex items-center gap-2 shrink-0">
+        <button type="button" @click="copy"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-800 transition-colors">
+            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+            <span x-text="copied ? 'Copied' : 'Copy'"></span>
+        </button>
+        <a href="/menu/{{.OrgSlug}}" target="_blank" rel="noopener"
+           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary hover:bg-primary-hover text-white transition-colors">
+            <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+            Open
+        </a>
+    </div>
+</div>
+{{end}}
+
 {{if not .Groups}}
 <div class="text-center py-16 px-4 bg-surface border border-stone-200 rounded-2xl shadow-sm">
     <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 text-stone-600">
@@ -29,27 +56,13 @@
 
 {{range .Groups}}
 <section class="mb-10">
-    <h2 class="text-lg font-semibold text-stone-900 mb-4 flex items-center gap-2">
-        <span class="inline-block w-1.5 h-5 bg-primary rounded-full"></span>
+    <h2 class="font-serif text-2xl text-stone-900 mb-4 flex items-baseline gap-3">
         {{.Name}}
+        <span class="font-mono text-[10px] uppercase tracking-wider text-stone-500">— {{len .Items}} items</span>
     </h2>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {{range .Items}}
-        <div class="bg-surface border border-stone-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
-            {{if .ImagePath}}
-            <img src="{{thumbURL .ImagePath}}" alt="{{.Name}}" class="w-full h-48 object-cover">
-            {{else}}
-            <div class="w-full h-48 bg-stone-100 flex items-center justify-center text-stone-400">
-                <i data-lucide="utensils-crossed" class="w-10 h-10"></i>
-            </div>
-            {{end}}
-            <div class="p-4 flex items-start justify-between gap-3 flex-1">
-                <h3 class="font-semibold text-stone-900 leading-snug">{{.Name}}</h3>
-                <div class="text-stone-900 font-bold whitespace-nowrap">
-                    <span class="text-xs text-stone-500 font-medium mr-0.5">MVR</span>{{money .SellingPrice}}
-                </div>
-            </div>
-        </div>
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {{range $i, $it := .Items}}
+        {{template "menu_card" (dict "Item" $it "Index" $i "Symbol" $.OrgCurrencySymbol)}}
         {{end}}
     </div>
 </section>
