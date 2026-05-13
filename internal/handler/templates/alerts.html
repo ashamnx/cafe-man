@@ -1,0 +1,88 @@
+{{define "content"}}
+<div class="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
+    <div>
+        <h1 class="text-2xl font-bold tracking-tight text-stone-900 flex items-center gap-2">
+            <i data-lucide="bell" class="w-6 h-6 text-primary"></i>
+            Alerts
+        </h1>
+        <p class="text-sm text-stone-600 mt-1">Notifications for low stock, price increases, and system events</p>
+    </div>
+</div>
+
+{{if not .Alerts}}
+<div class="text-center py-16 px-4 bg-surface border border-stone-200 rounded-2xl shadow-sm">
+    <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 text-stone-600">
+        <i data-lucide="bell-off" class="w-8 h-8"></i>
+    </div>
+    <h3 class="text-lg font-medium text-stone-900 mb-2">No alerts</h3>
+    <p class="text-stone-600 mb-6 max-w-sm mx-auto">You're all caught up! We'll notify you here if stock runs low or vendor prices increase.</p>
+</div>
+{{else}}
+<div class="bg-surface border border-stone-200 rounded-2xl shadow-sm overflow-hidden p-0">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-stone-700">
+            <thead class="text-xs uppercase bg-stone-100 text-stone-600 font-semibold border-b border-stone-200">
+                <tr>
+                    <th scope="col" class="px-6 py-4">Type</th>
+                    <th scope="col" class="px-6 py-4">Ingredient</th>
+                    <th scope="col" class="px-6 py-4 w-full">Message</th>
+                    <th scope="col" class="px-6 py-4 hidden sm:table-cell">Date</th>
+                    <th scope="col" class="px-6 py-4 hidden md:table-cell">Affects</th>
+                    <th scope="col" class="px-6 py-4">Status</th>
+                    <th scope="col" class="px-6 py-4 text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+                {{range .Alerts}}
+                <tr class="hover:bg-stone-50 transition-colors {{if .IsRead}}opacity-60 bg-stone-50{{end}}">
+                    <td class="px-6 py-4 whitespace-nowrap font-medium">
+                        {{if eq .AlertType "price_increase"}}
+                        <span class="inline-flex items-center gap-1.5 text-red-400"><i data-lucide="trending-up" class="w-4 h-4"></i> Price</span>
+                        {{else if eq .AlertType "low_stock"}}
+                        <span class="inline-flex items-center gap-1.5 text-yellow-400"><i data-lucide="archive" class="w-4 h-4"></i> Stock</span>
+                        {{else}}
+                        <span class="inline-flex items-center gap-1.5 text-blue-400"><i data-lucide="info" class="w-4 h-4"></i> {{.AlertType}}</span>
+                        {{end}}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-stone-900 font-medium">{{.IngredientName}}</td>
+                    <td class="px-6 py-4 text-stone-700">
+                        {{.Message}}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-stone-500 text-xs hidden sm:table-cell">{{.CreatedAt.Format "Jan 02, 2006 15:04"}}</td>
+                    <td class="px-6 py-4 whitespace-nowrap hidden md:table-cell">
+                        {{if .AffectedRecipes}}
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+                            <i data-lucide="chef-hat" class="w-3 h-3"></i> {{.AffectedRecipes}} recipe{{if gt .AffectedRecipes 1.0}}s{{end}}
+                        </span>
+                        {{else}}
+                        <span class="text-xs text-stone-400">None</span>
+                        {{end}}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        {{if .IsRead}}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] uppercase tracking-wider font-semibold text-stone-500 border border-stone-200">Read</span>
+                        {{else}}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] uppercase tracking-wider font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">Unread</span>
+                        {{end}}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
+                        {{if not .IsRead}}
+                        <form method="POST" action="/alerts/{{.ID}}/read" hx-post="/alerts/{{.ID}}/read" hx-target="closest tr" hx-swap="outerHTML">
+                            <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white text-stone-700 hover:text-stone-900 hover:bg-stone-100 transition-colors border border-stone-200" title="Mark as Read">
+                                <i data-lucide="check" class="w-3.5 h-3.5"></i> Mark Read
+                            </button>
+                        </form>
+                        {{else}}
+                        <span class="text-stone-400">—</span>
+                        {{end}}
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</div>
+{{end}}
+{{end}}
+
+{{template "layout" .}}

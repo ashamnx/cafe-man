@@ -1,0 +1,19 @@
+{{define "ingredient_recipes.html"}}
+<div>
+    <p class="text-sm text-stone-600 mb-4"><span class="font-semibold text-stone-900">{{.Ingredient.Name}}</span> is used in:</p>
+    {{if .Recipes}}
+    <ul class="space-y-2">
+        {{range .Recipes}}
+        <li>
+            <a href="/recipes/{{.ID}}" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-stone-50 transition-colors text-sm text-stone-700 hover:text-primary">
+                <i data-lucide="chef-hat" class="w-4 h-4 text-stone-400 shrink-0"></i>
+                {{.Name}}
+            </a>
+        </li>
+        {{end}}
+    </ul>
+    {{else}}
+    <p class="text-sm text-stone-500">Not used in any recipes.</p>
+    {{end}}
+</div>
+{{end}}

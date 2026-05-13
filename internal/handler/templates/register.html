@@ -1,0 +1,69 @@
+{{define "content"}}
+<div class="max-w-lg w-full mx-auto mt-8 sm:mt-16 px-4 mb-12">
+    <div class="bg-surface/50 sm:bg-surface border border-stone-200 sm:border-stone-300 rounded-2xl shadow-xl backdrop-blur-xl p-8">
+        <div class="text-center mb-8">
+            <h1 class="text-2xl font-bold tracking-tight text-stone-900 mb-2">Create Account</h1>
+            <p class="text-sm text-stone-600">Join Searlo Cafe to manage your business</p>
+        </div>
+        
+        {{if .Error}}
+        <div class="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-lg text-sm mb-6 flex items-start gap-3">
+            <i data-lucide="alert-circle" class="w-5 h-5 shrink-0 mt-0.5"></i>
+            <div>{{.Error}}</div>
+        </div>
+        {{end}}
+
+        <form method="POST" action="/register" class="space-y-5">
+            <div>
+                <label for="full_name" class="block text-sm font-medium text-stone-700 mb-1.5">Full Name</label>
+                <input type="text" id="full_name" name="full_name" value="{{if .Input}}{{.Input.FullName}}{{end}}" required autofocus
+                    class="block w-full rounded-lg border-0 py-2 px-3.5 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 placeholder:text-stone-500 transition-shadow">
+            </div>
+            <div>
+                <label for="email" class="block text-sm font-medium text-stone-700 mb-1.5">Email address</label>
+                <input type="email" id="email" name="email" value="{{if .Input}}{{.Input.Email}}{{end}}" required
+                    class="block w-full rounded-lg border-0 py-2 px-3.5 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 placeholder:text-stone-500 transition-shadow">
+            </div>
+            <div>
+                <label for="password" class="block text-sm font-medium text-stone-700 mb-1.5">Password <span class="text-stone-500 font-normal">(min 8 chars)</span></label>
+                <input type="password" id="password" name="password" minlength="8" required
+                    class="block w-full rounded-lg border-0 py-2 px-3.5 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 placeholder:text-stone-500 transition-shadow">
+            </div>
+            
+            <div class="pt-2 pb-1">
+                <div class="border-t border-stone-300"></div>
+            </div>
+
+            <div>
+                <label for="org_name" class="block text-sm font-medium text-stone-700 mb-1.5">Cafe / Organization Name</label>
+                <input type="text" id="org_name" name="org_name" value="{{if .Input}}{{.Input.OrgName}}{{end}}" required
+                    class="block w-full rounded-lg border-0 py-2 px-3.5 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 placeholder:text-stone-500 transition-shadow">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label for="currency_code" class="block text-sm font-medium text-stone-700 mb-1.5">Currency Code</label>
+                    <input type="text" id="currency_code" name="currency_code" value="MVR" maxlength="3"
+                        class="block w-full rounded-lg border-0 py-2 px-3.5 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 placeholder:text-stone-500 transition-shadow uppercase">
+                </div>
+                <div>
+                    <label for="currency_symbol" class="block text-sm font-medium text-stone-700 mb-1.5">Currency Symbol</label>
+                    <input type="text" id="currency_symbol" name="currency_symbol" value="Mvr" maxlength="10"
+                        class="block w-full rounded-lg border-0 py-2 px-3.5 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 placeholder:text-stone-500 transition-shadow">
+                </div>
+            </div>
+
+            <button type="submit" class="w-full flex justify-center items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-all active:scale-[0.98] mt-2">
+                Register Free Account
+                <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </button>
+        </form>
+
+        <p class="mt-8 text-center text-sm text-stone-600">
+            Already have an account? 
+            <a href="/login" class="font-semibold text-primary hover:text-blue-400 transition-colors">Sign In</a>
+        </p>
+    </div>
+</div>
+{{end}}
+
+{{template "layout" .}}

@@ -1,0 +1,211 @@
+{{define "content"}}
+<div class="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
+    <div>
+        <h1 class="text-2xl font-bold tracking-tight text-stone-900 flex items-center gap-2">
+            <i data-lucide="package" class="w-6 h-6 text-primary"></i>
+            Ingredients
+        </h1>
+        <p class="text-sm text-stone-600 mt-1">Manage your inventory, costs, and stock levels</p>
+    </div>
+    <div class="flex items-center gap-3">
+        <a href="/ingredients/categories" class="inline-flex items-center justify-center gap-2 bg-white hover:bg-stone-50 text-stone-700 px-4 py-2.5 rounded-lg text-sm font-semibold border border-stone-200 transition-all">
+            <i data-lucide="tags" class="w-4 h-4"></i> Categories
+        </a>
+        <a href="/ingredients/cost-trends" class="inline-flex items-center justify-center gap-2 bg-white hover:bg-stone-50 text-stone-700 px-4 py-2.5 rounded-lg text-sm font-semibold border border-stone-200 transition-all">
+            <i data-lucide="trending-up" class="w-4 h-4"></i> Cost Trends
+        </a>
+        <a href="/ingredients/new" class="inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-white px-4 py-2.5 rounded-lg text-sm font-semibold shadow-sm transition-all focus:ring-2 focus:ring-primary focus:outline-none active:scale-95">
+            <i data-lucide="plus" class="w-4 h-4"></i><span class="hidden sm:inline"> Add Ingredient</span>
+        </a>
+    </div>
+</div>
+
+{{if not .Ingredients}}
+<div class="text-center py-16 px-4 bg-surface border border-stone-200 rounded-2xl shadow-sm">
+    <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 text-stone-600">
+        <i data-lucide="package-search" class="w-8 h-8"></i>
+    </div>
+    <h3 class="text-lg font-medium text-stone-900 mb-2">No ingredients yet</h3>
+    <p class="text-stone-600 mb-6 max-w-sm mx-auto">Start building your inventory by adding ingredients. You'll be able to track stock levels and calculate costs.</p>
+    <a href="/ingredients/new" class="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-all">
+        <i data-lucide="plus" class="w-4 h-4"></i> Add your first ingredient
+    </a>
+</div>
+{{end}}
+
+<div x-data="ingredientsList">
+{{$activeSort := index .Filters "sort"}}
+{{$lowActive := eq (index .Filters "stock") "low"}}
+
+<!-- Filter Bar -->
+<form method="GET" action="/ingredients" x-ref="filterForm" class="flex flex-row items-center gap-2 mb-4">
+    <!-- Search: client-side live filter via Alpine. name=search preserves URL state when other filters submit. -->
+    <div class="relative flex-grow min-w-0">
+        <i data-lucide="search" class="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+        <input type="text" name="search" x-model="query" placeholder="Search ingredients..."
+               class="block w-full rounded-lg border-0 py-2 pl-9 pr-3 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary text-sm">
+    </div>
+
+    <!-- Sort: icon button + popover. Hidden sort field carries current value for cross-filter submits. -->
+    <input type="hidden" name="sort" x-ref="sortField" value="{{$activeSort}}">
+    <div class="relative shrink-0" @click.away="closeSort">
+        <button type="button" @click="toggleSort"
+                class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-white text-stone-700 shadow-sm ring-1 ring-inset ring-stone-200 hover:bg-stone-50"
+                title="Sort">
+            <i data-lucide="arrow-up-down" class="w-4 h-4"></i>
+        </button>
+        <div x-show="sortOpen" x-cloak x-transition.opacity
+             class="absolute right-0 mt-2 w-44 rounded-lg bg-white shadow-lg ring-1 ring-stone-200 z-20 py-1">
+            <button type="button" @click="selectSort('name')"
+                    class="w-full text-left px-3 py-2 text-sm hover:bg-stone-50 {{if or (eq $activeSort "name") (eq $activeSort "")}}text-primary font-semibold{{else}}text-stone-700{{end}}">Name</button>
+            <button type="button" @click="selectSort('cost_asc')"
+                    class="w-full text-left px-3 py-2 text-sm hover:bg-stone-50 {{if eq $activeSort "cost_asc"}}text-primary font-semibold{{else}}text-stone-700{{end}}">Cost (Low to High)</button>
+            <button type="button" @click="selectSort('cost_desc')"
+                    class="w-full text-left px-3 py-2 text-sm hover:bg-stone-50 {{if eq $activeSort "cost_desc"}}text-primary font-semibold{{else}}text-stone-700{{end}}">Cost (High to Low)</button>
+            <button type="button" @click="selectSort('stock_asc')"
+                    class="w-full text-left px-3 py-2 text-sm hover:bg-stone-50 {{if eq $activeSort "stock_asc"}}text-primary font-semibold{{else}}text-stone-700{{end}}">Stock (Low to High)</button>
+            <button type="button" @click="selectSort('stock_desc')"
+                    class="w-full text-left px-3 py-2 text-sm hover:bg-stone-50 {{if eq $activeSort "stock_desc"}}text-primary font-semibold{{else}}text-stone-700{{end}}">Stock (High to Low)</button>
+        </div>
+    </div>
+
+    <!-- Stock: chip toggle. Hidden input holds current value; button flips it and submits. -->
+    <input type="hidden" name="stock" x-ref="stockField" value="{{index .Filters "stock"}}">
+    <button type="button" @click="toggleStock"
+            class="inline-flex items-center gap-1 h-10 px-3 rounded-lg text-sm font-medium shadow-sm ring-1 ring-inset whitespace-nowrap shrink-0 {{if $lowActive}}bg-red-500/10 text-red-600 ring-red-500/30{{else}}bg-white text-stone-700 ring-stone-200 hover:bg-stone-50{{end}}"
+            title="{{if $lowActive}}Showing low stock only — tap to clear{{else}}Show only low stock{{end}}">
+        <i data-lucide="package" class="w-4 h-4"></i>
+        <span>Low</span>
+    </button>
+
+    <!-- Category: standard select, auto-submits -->
+    <select name="category_id" onchange="this.form.submit()"
+            class="rounded-lg border-0 h-10 pl-3 pr-8 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary text-sm appearance-none cursor-pointer max-w-[40vw] sm:max-w-none truncate shrink-0">
+        <option value="">All Categories</option>
+        {{range .IngredientCategories}}
+        <option value="{{.ID}}" {{if eq (index $.Filters "category_id") .ID.String}}selected{{end}}>{{.Name}} ({{index $.CategoryCounts .ID}})</option>
+        {{end}}
+    </select>
+</form>
+
+{{if not .Ingredients}}
+<div class="text-center py-12 px-4 bg-surface border border-stone-200 rounded-2xl shadow-sm">
+    <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 text-stone-600">
+        <i data-lucide="search-x" class="w-6 h-6"></i>
+    </div>
+    <h3 class="text-base font-medium text-stone-900 mb-1">No ingredients found</h3>
+    <p class="text-stone-600 text-sm">Try adjusting your filters.</p>
+</div>
+{{else}}
+<div class="bg-surface border border-stone-200 rounded-2xl shadow-sm overflow-hidden p-0">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-stone-700">
+            <thead class="text-xs uppercase bg-stone-100 text-stone-600 font-semibold border-b border-stone-200">
+                <tr>
+                    <th scope="col" class="px-6 py-4">Name</th>
+                    <th scope="col" class="px-6 py-4 hidden sm:table-cell">Category</th>
+                    <th scope="col" class="px-6 py-4 hidden sm:table-cell">Stock</th>
+                    <th scope="col" class="px-6 py-4 hidden sm:table-cell">Cost/Unit</th>
+                    <th scope="col" class="px-6 py-4 hidden md:table-cell">Recipes</th>
+                    <th scope="col" class="px-6 py-4 hidden lg:table-cell">Alert %</th>
+                    <th scope="col" class="px-6 py-4 text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+                {{range .Ingredients}}
+                <tr class="hover:bg-stone-50 transition-colors" data-name="{{lower .Name}}" x-show="rowVisible($el)">
+                    <td class="px-6 py-4" style="max-width:60vw">
+                        <div class="flex items-center gap-2">
+                            {{if .ImagePath}}
+                            <img src="{{thumbURL .ImagePath}}" alt="" class="w-8 h-8 rounded-md object-cover shrink-0 border border-stone-200">
+                            {{else}}
+                            <div class="w-8 h-8 rounded-md bg-stone-100 flex items-center justify-center shrink-0 border border-stone-200">
+                                <i data-lucide="package" class="w-4 h-4 text-stone-400"></i>
+                            </div>
+                            {{end}}
+                            <a href="/ingredients/{{.ID}}" class="font-medium text-stone-900 hover:text-primary transition-colors truncate block">
+                                {{.Name}}
+                            </a>
+                            {{$alerts := ingAlertCount $.AlertCounts .ID}}
+                            {{if gt $alerts 0.0}}
+                            <a href="/alerts" class="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-500/10 text-red-500 border border-red-500/20" title="Unread price alerts">
+                                <i data-lucide="trending-up" class="w-3 h-3"></i>
+                            </a>
+                            {{end}}
+                        </div>
+                        <div class="sm:hidden flex items-center flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs">
+                            <span class="{{if and .LowStockThreshold (lt .CurrentStock (deref .LowStockThreshold))}}text-red-400 font-semibold{{else}}text-stone-600{{end}}">{{money .CurrentStock}} {{if .Unit}}{{.Unit.Abbreviation}}{{end}}</span>
+                            <span class="text-stone-400">&middot;</span>
+                            <span class="text-stone-600 font-mono">MVR {{money .CurrentCostPerUnit}}/{{if .Unit}}{{.Unit.Abbreviation}}{{end}}</span>
+                            {{if .LastPriceAt}}<span class="text-stone-400 text-[10px]">{{timeAgo .LastPriceAt}}</span>{{end}}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-stone-600 hidden sm:table-cell">
+                        {{if .Category}}<a href="/ingredients?category_id={{.Category.ID}}" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-white text-stone-700 border border-stone-300 hover:bg-stone-50 hover:border-primary hover:text-primary transition-colors" title="Filter by {{.Category.Name}}">{{.Category.Name}}</a>{{end}}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap hidden sm:table-cell {{if and .LowStockThreshold (lt .CurrentStock (deref .LowStockThreshold))}}text-red-400 font-semibold{{else}}text-stone-900 font-medium{{end}}">
+                        {{money .CurrentStock}} <span class="text-xs {{if and .LowStockThreshold (lt .CurrentStock (deref .LowStockThreshold))}}text-red-400/70{{else}}text-stone-500{{end}} ml-0.5">{{if .Unit}}{{.Unit.Abbreviation}}{{end}}</span>
+                        {{if and .LowStockThreshold (lt .CurrentStock (deref .LowStockThreshold))}}
+                        <i data-lucide="alert-triangle" class="w-3 h-3 inline-block ml-1 text-red-500" title="Low Stock"></i>
+                        {{end}}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
+                        <div class="text-stone-700">{{money .CurrentCostPerUnit}}</div>
+                        {{if .LastPriceAt}}<div class="text-[10px] text-stone-400 mt-0.5">{{timeAgo .LastPriceAt}}</div>{{end}}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap hidden md:table-cell">
+                        {{$count := recipeCount $.RecipeCounts .ID}}
+                        {{if gt $count 0}}
+                        <button class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-blue-500/10 text-blue-600 border border-blue-500/20 hover:bg-blue-500/20 transition-colors cursor-pointer"
+                                hx-get="/ingredients/{{.ID}}/recipes"
+                                hx-target="#recipe-modal-content"
+                                hx-swap="innerHTML"
+                                onclick="document.getElementById('recipe-modal').classList.remove('hidden')">
+                            <i data-lucide="chef-hat" class="w-3 h-3"></i> {{$count}}
+                        </button>
+                        {{else}}
+                        <span class="text-xs text-stone-400">0</span>
+                        {{end}}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-stone-600 hidden lg:table-cell">{{pct .PriceAlertPercentage}}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
+                        {{if .Category}}<span class="sm:hidden block mb-1"><a href="/ingredients?category_id={{.Category.ID}}" class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white text-stone-700 border border-stone-300 hover:bg-stone-50 hover:border-primary hover:text-primary transition-colors" title="Filter by {{.Category.Name}}">{{.Category.Name}}</a></span>{{end}}
+                        <a href="/ingredients/{{.ID}}/edit" class="inline-flex items-center justify-center w-8 h-8 rounded-md text-stone-600 hover:text-primary hover:bg-primary/10 transition-colors focus:ring-2 focus:ring-primary" title="Edit">
+                            <i data-lucide="edit-2" class="w-4 h-4"></i>
+                        </a>
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Client-side "no matches" state when search filters out all rows -->
+<div x-show="noMatches()" x-cloak class="text-center py-12 px-4 mt-4 bg-surface border border-stone-200 rounded-2xl shadow-sm">
+    <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 text-stone-600">
+        <i data-lucide="search-x" class="w-6 h-6"></i>
+    </div>
+    <h3 class="text-base font-medium text-stone-900 mb-1">No matches</h3>
+    <p class="text-stone-600 text-sm">No ingredients match your search.</p>
+</div>
+
+<!-- Recipe list modal -->
+<div id="recipe-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onclick="if(event.target===this)this.classList.add('hidden')">
+    <div class="bg-white rounded-2xl shadow-xl border border-stone-200 w-full max-w-md mx-4 overflow-hidden">
+        <div class="px-6 py-4 border-b border-stone-200 bg-stone-50 flex items-center justify-between">
+            <h3 class="font-semibold text-stone-900 text-sm">Used in Recipes</h3>
+            <button onclick="document.getElementById('recipe-modal').classList.add('hidden')" class="p-1 rounded-md text-stone-500 hover:text-stone-900 hover:bg-stone-200 transition-colors">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+        <div id="recipe-modal-content" class="p-6">
+            <div class="text-center text-stone-500 text-sm">Loading...</div>
+        </div>
+    </div>
+</div>
+{{end}}
+</div>
+{{end}}
+
+{{template "layout" .}}

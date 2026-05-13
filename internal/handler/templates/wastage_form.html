@@ -1,0 +1,89 @@
+{{define "content"}}
+<div class="mb-6">
+    <a href="/wastage" class="inline-flex items-center gap-1 text-sm text-stone-600 hover:text-stone-900 transition-colors">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Wastage
+    </a>
+</div>
+
+<div class="mb-6">
+    <h1 class="text-2xl font-bold tracking-tight text-stone-900 flex items-center gap-2">
+        <i data-lucide="trash" class="w-6 h-6 text-primary"></i>
+        Record Wastage
+    </h1>
+    <p class="text-sm text-stone-600 mt-1">Record ingredient waste. Stock will be deducted immediately.</p>
+</div>
+
+<div class="bg-surface border border-stone-200 rounded-2xl shadow-sm p-6 sm:p-8 max-w-2xl" x-data="unitPicker">
+    <form method="POST" hx-post="/wastage" action="/wastage" class="space-y-6">
+        <div>
+            <label for="ingredient_id" class="block text-sm font-medium text-stone-700 mb-2">Ingredient</label>
+            <select id="ingredient_id" name="ingredient_id" required
+                    @change="setType($event.target.selectedOptions[0].dataset.unitType)"
+                    class="block w-full rounded-lg border-0 py-2.5 px-3.5 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm appearance-none cursor-pointer">
+                <option value="" data-unit-type="">Select ingredient...</option>
+                {{range .Ingredients}}
+                <option value="{{.ID}}" data-unit-type="{{if .Unit}}{{.Unit.UnitType}}{{end}}" data-unit-id="{{.UnitID}}">{{.Name}} {{if .Unit}}({{.Unit.Abbreviation}}){{end}}</option>
+                {{end}}
+            </select>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div>
+                <label for="quantity" class="block text-sm font-medium text-stone-700 mb-2">Quantity Wasted</label>
+                <div class="flex rounded-lg shadow-sm ring-1 ring-inset ring-stone-200 focus-within:ring-2 focus-within:ring-inset focus-within:ring-primary">
+                    <input type="number" id="quantity" name="quantity" step="0.0001" min="0.0001" required placeholder="0.00"
+                           class="block w-full border-0 py-2.5 px-3.5 bg-white text-stone-900 sm:text-sm font-mono rounded-l-lg focus:ring-0">
+                    <select name="quantity_unit_id" class="border-0 border-l border-stone-200 py-2.5 pl-2 pr-3 bg-stone-50 text-stone-900 sm:text-sm rounded-r-lg focus:ring-0">
+                        {{range .Units}}
+                        <option value="{{.ID}}" data-unit-type="{{.UnitType}}" x-show="showOption($el)">{{.Abbreviation}}</option>
+                        {{end}}
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label for="wastage_type" class="block text-sm font-medium text-stone-700 mb-2">Reason</label>
+                <select id="wastage_type" name="wastage_type" required
+                        class="block w-full rounded-lg border-0 py-2.5 px-3.5 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm appearance-none cursor-pointer">
+                    <option value="">Select reason...</option>
+                    <option value="expired">Expired / Spoiled</option>
+                    <option value="preparation_loss">Preparation Loss</option>
+                    <option value="damaged">Damaged / Dropped</option>
+                    <option value="returned">Returned / Unsold</option>
+                </select>
+            </div>
+        </div>
+
+        <div>
+            <label for="wastage_date" class="block text-sm font-medium text-stone-700 mb-2">Date</label>
+            <input type="date" id="wastage_date" name="wastage_date" required
+                   class="block w-full rounded-lg border-0 py-2.5 px-3.5 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm">
+        </div>
+
+        <div>
+            <label for="notes" class="block text-sm font-medium text-stone-700 mb-2">Notes (optional)</label>
+            <textarea id="notes" name="notes" rows="2" placeholder="e.g., Found spoiled in storage..."
+                      class="block w-full rounded-lg border-0 py-2.5 px-3.5 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm"></textarea>
+        </div>
+
+        <div class="flex flex-col-reverse sm:flex-row items-center gap-3 pt-6 border-t border-stone-200">
+            <a href="/wastage" class="w-full sm:w-auto inline-flex items-center justify-center rounded-lg px-6 py-2.5 text-sm font-semibold text-stone-700 hover:bg-stone-100 transition-colors">
+                Cancel
+            </a>
+            <button type="submit" class="w-full sm:w-auto sm:ml-auto inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-red-700 transition-all">
+                <i data-lucide="trash" class="w-4 h-4"></i> Record Wastage
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+(function() {
+    var dateInput = document.getElementById('wastage_date');
+    if (dateInput && !dateInput.value) {
+        dateInput.value = new Date().toISOString().split('T')[0];
+    }
+})();
+</script>
+{{end}}
+
+{{template "layout" .}}

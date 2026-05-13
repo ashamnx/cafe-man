@@ -1,0 +1,73 @@
+{{define "content"}}
+<div class="mb-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <a href="/vendors" class="p-2 -ml-2 rounded-full text-stone-600 hover:text-stone-900 hover:bg-white transition-colors">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+            </a>
+            <div class="hidden sm:flex w-12 h-12 rounded-xl bg-white border border-stone-200 items-center justify-center text-xl text-stone-900 font-bold shrink-0 shadow-inner">
+                {{printf "%.1s" .Vendor.Name}}
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight text-stone-900">{{.Vendor.Name}}</h1>
+                <p class="text-sm text-stone-600 mt-1">Vendor Details</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3 sm:ml-auto">
+            <a href="/vendors/{{.Vendor.ID}}/edit" class="inline-flex items-center gap-2 bg-white hover:bg-stone-100 text-stone-900 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-stone-200">
+                <i data-lucide="edit-2" class="w-4 h-4"></i> Edit
+            </a>
+            <button class="inline-flex items-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-red-500/20"
+                    hx-delete="/vendors/{{.Vendor.ID}}"
+                    hx-confirm="Delete this vendor?">
+                <i data-lucide="trash-2" class="w-4 h-4"></i> Delete
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="bg-surface border border-stone-200 rounded-2xl shadow-sm overflow-hidden p-6 sm:p-8 max-w-3xl">
+    <h3 class="text-sm font-medium text-stone-900 mb-6 uppercase tracking-wider border-b border-stone-200 pb-4 flex items-center gap-2">
+        <i data-lucide="contact" class="w-4 h-4 text-stone-600"></i> Contact Information
+    </h3>
+    
+    <dl class="space-y-6 sm:grid sm:grid-cols-2 sm:gap-6 sm:space-y-0 text-sm">
+        {{if .Vendor.ContactName}}
+        <div>
+            <dt class="flex items-center gap-2 text-stone-500 font-medium mb-1.5"><i data-lucide="user" class="w-4 h-4"></i> Contact Person</dt>
+            <dd class="text-stone-800 font-medium">{{.Vendor.ContactName}}</dd>
+        </div>
+        {{end}}
+        
+        {{if .Vendor.Phone}}
+        <div>
+            <dt class="flex items-center gap-2 text-stone-500 font-medium mb-1.5"><i data-lucide="phone" class="w-4 h-4"></i> Phone</dt>
+            <dd><a href="tel:{{.Vendor.Phone}}" class="text-primary font-medium hover:text-blue-400 transition-colors">{{.Vendor.Phone}}</a></dd>
+        </div>
+        {{end}}
+        
+        {{if .Vendor.Email}}
+        <div class="sm:col-span-2">
+            <dt class="flex items-center gap-2 text-stone-500 font-medium mb-1.5"><i data-lucide="mail" class="w-4 h-4"></i> Email</dt>
+            <dd><a href="mailto:{{.Vendor.Email}}" class="text-primary font-medium hover:text-blue-400 transition-colors">{{.Vendor.Email}}</a></dd>
+        </div>
+        {{end}}
+        
+        {{if .Vendor.Address}}
+        <div class="sm:col-span-2">
+            <dt class="flex items-center gap-2 text-stone-500 font-medium mb-1.5"><i data-lucide="map-pin" class="w-4 h-4"></i> Address</dt>
+            <dd class="text-stone-700 mt-1 p-3.5 bg-white rounded-xl border border-stone-200 whitespace-pre-wrap leading-relaxed">{{.Vendor.Address}}</dd>
+        </div>
+        {{end}}
+        
+        {{if .Vendor.Notes}}
+        <div class="sm:col-span-2 mt-4 pt-4 border-t border-stone-200">
+            <dt class="flex items-center gap-2 text-stone-500 font-medium mb-1.5"><i data-lucide="sticky-note" class="w-4 h-4"></i> Notes</dt>
+            <dd class="text-stone-700 mt-1 p-3.5 bg-blue-500/5 rounded-xl border border-blue-500/10 whitespace-pre-wrap leading-relaxed">{{.Vendor.Notes}}</dd>
+        </div>
+        {{end}}
+    </dl>
+</div>
+{{end}}
+
+{{template "layout" .}}

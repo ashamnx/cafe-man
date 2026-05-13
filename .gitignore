@@ -1,0 +1,17 @@
+.env
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.prof
+tmp/
+uploads/
+vendor/
+.DS_Store
+searlo-cafe
+server
+.idea/
+.claude/

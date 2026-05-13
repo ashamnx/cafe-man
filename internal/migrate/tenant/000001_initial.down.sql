@@ -1,0 +1,14 @@
+DROP TABLE IF EXISTS alerts;
+DROP TABLE IF EXISTS recipe_utility_costs;
+DROP TABLE IF EXISTS recipe_ingredients;
+DROP TABLE IF EXISTS menu_items;
+DROP TABLE IF EXISTS menu_categories;
+DROP TABLE IF EXISTS vendor_bill_items;
+DROP TABLE IF EXISTS vendor_bills;
+DROP TABLE IF EXISTS ingredient_price_history;
+DROP TABLE IF EXISTS ingredients;
+DROP TABLE IF EXISTS units;
+DROP TABLE IF EXISTS user_roles;
+DROP TABLE IF EXISTS role_permissions;
+DROP TABLE IF EXISTS permissions;
+DROP TABLE IF EXISTS roles;

@@ -1,0 +1,141 @@
+{{define "content"}}
+<div class="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
+    <div>
+        <h1 class="text-2xl font-bold tracking-tight text-stone-900 flex items-center gap-2">
+            <i data-lucide="users" class="w-6 h-6 text-primary"></i>
+            Team Members
+        </h1>
+        <p class="text-sm text-stone-600 mt-1">Manage users and their roles in your organization</p>
+    </div>
+    <div class="flex gap-2">
+        <a href="/audit-log" class="inline-flex items-center gap-2 bg-white hover:bg-stone-50 text-stone-700 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm ring-1 ring-inset ring-stone-200 transition-all focus:ring-2 focus:ring-primary focus:outline-none">
+            <i data-lucide="scroll-text" class="w-4 h-4"></i> Audit Log
+        </a>
+        <a href="/settings/roles" class="inline-flex items-center gap-2 bg-white hover:bg-stone-50 text-stone-700 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm ring-1 ring-inset ring-stone-200 transition-all focus:ring-2 focus:ring-primary focus:outline-none">
+            <i data-lucide="shield" class="w-4 h-4"></i> Roles
+        </a>
+        <a href="/settings/users/invite" class="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition-all focus:ring-2 focus:ring-primary focus:outline-none active:scale-95">
+            <i data-lucide="user-plus" class="w-4 h-4"></i> Invite User
+        </a>
+    </div>
+</div>
+
+{{if .Success}}
+<div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800 flex items-center gap-2">
+    <i data-lucide="check-circle" class="w-4 h-4 text-green-600"></i>
+    {{.Success}}
+</div>
+{{end}}
+
+{{if .Error}}
+<div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800 flex items-center gap-2">
+    <i data-lucide="alert-circle" class="w-4 h-4 text-red-600"></i>
+    {{.Error}}
+</div>
+{{end}}
+
+{{if not .Members}}
+<div class="text-center py-16 px-4 bg-surface border border-stone-200 rounded-2xl shadow-sm">
+    <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 text-stone-600">
+        <i data-lucide="users" class="w-8 h-8"></i>
+    </div>
+    <h3 class="text-lg font-medium text-stone-900 mb-2">No team members</h3>
+    <p class="text-stone-600 mb-6 max-w-sm mx-auto">Invite your team to start collaborating.</p>
+    <a href="/settings/users/invite" class="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all">
+        <i data-lucide="user-plus" class="w-4 h-4"></i> Invite your first team member
+    </a>
+</div>
+{{else}}
+<div class="bg-surface border border-stone-200 rounded-2xl shadow-sm overflow-hidden p-0">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-stone-700">
+            <thead class="text-xs uppercase bg-stone-100 text-stone-600 font-semibold border-b border-stone-200">
+                <tr>
+                    <th scope="col" class="px-6 py-4">User</th>
+                    <th scope="col" class="px-6 py-4">Role</th>
+                    <th scope="col" class="px-6 py-4 hidden sm:table-cell">Status</th>
+                    <th scope="col" class="px-6 py-4 hidden md:table-cell">Joined</th>
+                    <th scope="col" class="px-6 py-4 text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-stone-100">
+                {{range .Members}}
+                <tr class="hover:bg-stone-50 transition-colors">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-xs text-stone-600 font-bold border border-stone-200 shrink-0">{{printf "%.1s" .FullName}}</span>
+                            <div>
+                                <div class="font-medium text-stone-900">{{.FullName}}</div>
+                                <div class="text-xs text-stone-500">{{.Email}}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        {{range .Roles}}
+                        {{if eq .Name "owner"}}
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                            <i data-lucide="crown" class="w-3 h-3"></i> Owner
+                        </span>
+                        {{else if eq .Name "manager"}}
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+                            <i data-lucide="briefcase" class="w-3 h-3"></i> Manager
+                        </span>
+                        {{else}}
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-stone-100 text-stone-700 border border-stone-200">
+                            <i data-lucide="user" class="w-3 h-3"></i> {{.Name}}
+                        </span>
+                        {{end}}
+                        {{end}}
+                        {{if not .Roles}}
+                        <span class="text-xs text-stone-400 italic">No role</span>
+                        {{end}}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
+                        {{if .IsActive}}
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">Active</span>
+                        {{else}}
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-stone-100 text-stone-500 border border-stone-200">Inactive</span>
+                        {{end}}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-stone-600 text-xs hidden md:table-cell">
+                        {{.JoinedAt.Format "Jan 2, 2006"}}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right">
+                        {{if not .IsOwner}}
+                        <div class="inline-flex items-center gap-1">
+                            <form method="POST" action="/settings/users/{{.UserID}}/role" class="inline">
+                                <input type="hidden" name="_method" value="PUT">
+                                <select name="role" onchange="this.form.submit()"
+                                        class="rounded-md border-0 py-1 px-2 bg-white text-stone-700 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary text-xs appearance-none cursor-pointer">
+                                    {{$currentRole := ""}}
+                                    {{range .Roles}}{{$currentRole = .Name}}{{end}}
+                                    <option value="manager" {{if eq $currentRole "manager"}}selected{{end}}>Manager</option>
+                                    <option value="staff" {{if eq $currentRole "staff"}}selected{{end}}>Staff</option>
+                                </select>
+                            </form>
+                            <form method="POST" action="/settings/users/{{.UserID}}/reset-password" onsubmit="return confirm('Reset password for this user?')">
+                                <button type="submit" class="inline-flex items-center justify-center w-8 h-8 rounded-md text-stone-400 hover:text-amber-600 hover:bg-amber-50 transition-colors" title="Reset password">
+                                    <i data-lucide="key-round" class="w-4 h-4"></i>
+                                </button>
+                            </form>
+                            <form method="POST" action="/settings/users/{{.UserID}}" onsubmit="return confirm('Remove this user from the organization?')">
+                                <input type="hidden" name="_method" value="DELETE">
+                                <button type="submit" class="inline-flex items-center justify-center w-8 h-8 rounded-md text-stone-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Remove user">
+                                    <i data-lucide="user-minus" class="w-4 h-4"></i>
+                                </button>
+                            </form>
+                        </div>
+                        {{else}}
+                        <span class="text-xs text-stone-400">Owner</span>
+                        {{end}}
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</div>
+{{end}}
+{{end}}
+
+{{template "layout" .}}

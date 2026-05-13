@@ -1,0 +1,372 @@
+{{define "layout"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{if .Title}}{{.Title}} - {{end}}Searlo Cafe</title>
+    <!-- HTMX for dynamic interactions without page reloads -->
+    <script src="/static/js/htmx.min.js"></script>
+
+    <!-- Tailwind CSS (pre-compiled) -->
+    <link rel="stylesheet" href="/static/css/tailwind.css">
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Lucide Icons -->
+    <script src="/static/js/lucide.min.js"></script>
+
+    <style>
+        .htmx-indicator { display: none; }
+        .htmx-request .htmx-indicator { display: inline-block; }
+        [x-cloak] { display: none !important; }
+        /* Scrollbar styling for a premium feel */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f5f5f4; }
+        ::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a29e; }
+    </style>
+</head>
+<body class="bg-stone-100 text-stone-900 font-sans antialiased min-h-screen flex flex-col selection:bg-primary/30 selection:text-white">
+
+    {{if .UserName}}
+    <nav x-data="navMenu" class="sticky top-0 z-50 bg-stone-50/90 backdrop-blur-md border-b border-stone-300 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <!-- Left side: Logo + nav links -->
+                <div class="flex items-center">
+                    <a href="/dashboard" class="flex-shrink-0 flex items-center gap-2 group" title="{{.OrgName}}">
+                        {{if .OrgLogoKey}}
+                        <img src="{{imageURL .OrgLogoKey}}" alt="{{.OrgName}}" class="h-9 max-w-[180px] object-contain">
+                        {{else}}
+                        <span class="flex items-center gap-2 text-xl font-bold bg-gradient-to-r from-blue-400 to-primary bg-clip-text text-transparent">
+                            <i data-lucide="coffee" class="text-blue-400 w-6 h-6 group-hover:rotate-12 transition-transform"></i>
+                            Searlo Cafe
+                        </span>
+                        {{end}}
+                    </a>
+                    <div class="hidden md:ml-10 md:flex md:space-x-1">
+                        <a href="/ingredients" data-nav="/ingredients" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-stone-700 hover:text-stone-900 hover:bg-white transition-colors">Ingredients</a>
+                        <a href="/vendors" data-nav="/vendors" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-stone-700 hover:text-stone-900 hover:bg-white transition-colors">Vendors</a>
+                        <a href="/bills" data-nav="/bills" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-stone-700 hover:text-stone-900 hover:bg-white transition-colors">Bills</a>
+                        <a href="/recipes" data-nav="/recipes" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-stone-700 hover:text-stone-900 hover:bg-white transition-colors">Recipes</a>
+                        <a href="/sales" data-nav="/sales" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-stone-700 hover:text-stone-900 hover:bg-white transition-colors">Sales</a>
+                        <a href="/wastage" data-nav="/wastage" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-stone-700 hover:text-stone-900 hover:bg-white transition-colors">Wastage</a>
+                    </div>
+                </div>
+
+                <!-- Right side: Alerts bell + User dropdown -->
+                <div class="hidden md:flex md:items-center md:gap-2">
+                    <!-- Alerts bell -->
+                    <a href="/alerts" data-nav="/alerts" class="nav-link relative p-2 text-stone-600 hover:text-stone-900 hover:bg-white rounded-full transition-colors" title="Alerts">
+                        <i data-lucide="bell" class="w-5 h-5"></i>
+                        {{if .AlertCount}}
+                        <span class="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold bg-red-500 text-white shadow-sm">
+                            {{.AlertCount}}
+                        </span>
+                        {{end}}
+                    </a>
+
+                    <!-- User profile dropdown -->
+                    <div x-data="userDropdown" class="relative">
+                        <button @click="toggleDropdown" type="button" class="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white transition-colors focus:outline-none focus:ring-2 focus:ring-primary">
+                            <span class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary border border-primary/20">{{printf "%.1s" .UserName}}</span>
+                            <div class="flex flex-col items-start">
+                                <span class="text-sm font-medium text-stone-800 leading-tight">{{.OrgName}}</span>
+                                <span class="text-xs text-stone-500 leading-tight">{{.UserName}}</span>
+                            </div>
+                            <i data-lucide="chevron-down" class="w-4 h-4 text-stone-400"></i>
+                        </button>
+
+                        <div x-show="dropdownOpen" @click.away="dropdownOpen = false"
+                             x-transition:enter="transition ease-out duration-100"
+                             x-transition:enter-start="opacity-0 scale-95"
+                             x-transition:enter-end="opacity-100 scale-100"
+                             x-transition:leave="transition ease-in duration-75"
+                             x-transition:leave-start="opacity-100 scale-100"
+                             x-transition:leave-end="opacity-0 scale-95"
+                             class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-stone-200 py-1 z-50"
+                             x-cloak>
+                            <a href="/settings/organization" data-nav="/settings/organization" class="nav-link flex items-center gap-2 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
+                                <i data-lucide="building-2" class="w-4 h-4 text-stone-500"></i> Organization
+                            </a>
+                            <a href="/settings/utility-costs" data-nav="/settings/utility-costs" class="nav-link flex items-center gap-2 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
+                                <i data-lucide="zap" class="w-4 h-4 text-stone-500"></i> Utility Costs
+                            </a>
+                            <a href="/settings/users" data-nav="/settings/users" class="nav-link flex items-center gap-2 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
+                                <i data-lucide="settings" class="w-4 h-4 text-stone-500"></i> Team
+                            </a>
+                            <div class="border-t border-stone-100 my-1"></div>
+                            <form method="POST" action="/logout">
+                                <button type="submit" class="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                    <i data-lucide="log-out" class="w-4 h-4"></i> Sign out
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mobile menu button -->
+                <div class="flex items-center gap-2 md:hidden">
+                    <!-- Mobile alerts bell -->
+                    <a href="/alerts" class="relative p-2 text-stone-600 hover:text-stone-900 transition-colors">
+                        <i data-lucide="bell" class="w-5 h-5"></i>
+                        {{if .AlertCount}}
+                        <span class="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold bg-red-500 text-white shadow-sm">
+                            {{.AlertCount}}
+                        </span>
+                        {{end}}
+                    </a>
+                    <button @click="toggle" type="button" class="inline-flex items-center justify-center p-2 rounded-md text-stone-600 hover:text-stone-900 hover:bg-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary transition-colors">
+                        <span class="sr-only">Open main menu</span>
+                        <i x-show="!mobileMenuOpen" data-lucide="menu" class="block h-6 w-6"></i>
+                        <i x-show="mobileMenuOpen" data-lucide="x" class="block h-6 w-6" x-cloak></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile menu panel -->
+        <div x-show="mobileMenuOpen"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 -translate-y-2"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100 translate-y-0"
+             x-transition:leave-end="opacity-0 -translate-y-2"
+             class="md:hidden border-b border-stone-300 bg-stone-50/95 backdrop-blur-xl absolute w-full shadow-lg"
+             x-cloak>
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <a href="/ingredients" data-nav="/ingredients" class="nav-link block px-3 py-2 rounded-md text-base font-medium text-stone-700 hover:text-stone-900 hover:bg-white transition-colors">Ingredients</a>
+                <a href="/vendors" data-nav="/vendors" class="nav-link block px-3 py-2 rounded-md text-base font-medium text-stone-700 hover:text-stone-900 hover:bg-white transition-colors">Vendors</a>
+                <a href="/bills" data-nav="/bills" class="nav-link block px-3 py-2 rounded-md text-base font-medium text-stone-700 hover:text-stone-900 hover:bg-white transition-colors">Bills</a>
+                <a href="/recipes" data-nav="/recipes" class="nav-link block px-3 py-2 rounded-md text-base font-medium text-stone-700 hover:text-stone-900 hover:bg-white transition-colors">Recipes</a>
+                <a href="/sales" data-nav="/sales" class="nav-link block px-3 py-2 rounded-md text-base font-medium text-stone-700 hover:text-stone-900 hover:bg-white transition-colors">Sales</a>
+                <a href="/wastage" data-nav="/wastage" class="nav-link block px-3 py-2 rounded-md text-base font-medium text-stone-700 hover:text-stone-900 hover:bg-white transition-colors">Wastage</a>
+            </div>
+            <div class="pt-4 pb-4 border-t border-stone-300">
+                <div class="flex items-center px-5">
+                    <div>
+                        <div class="text-base font-medium leading-none text-stone-900">{{.OrgName}}</div>
+                        <div class="text-sm font-medium leading-none text-stone-600 mt-1">{{.UserName}}</div>
+                    </div>
+                </div>
+                <div class="mt-3 px-2 space-y-1">
+                    <a href="/settings/organization" class="flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium text-stone-700 hover:text-stone-900 hover:bg-white transition-colors">
+                        <i data-lucide="building-2" class="w-5 h-5"></i> Organization
+                    </a>
+                    <a href="/settings/utility-costs" class="flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium text-stone-700 hover:text-stone-900 hover:bg-white transition-colors">
+                        <i data-lucide="zap" class="w-5 h-5"></i> Utility Costs
+                    </a>
+                    <a href="/settings/users" class="flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium text-stone-700 hover:text-stone-900 hover:bg-white transition-colors">
+                        <i data-lucide="settings" class="w-5 h-5"></i> Team
+                    </a>
+                    <form method="POST" action="/logout">
+                        <button type="submit" class="w-full text-left flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors">
+                            <i data-lucide="log-out" class="w-5 h-5"></i> Sign out
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </nav>
+    {{end}}
+
+    <!-- Main content area -->
+    <main class="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 animate-fade-in relative z-0">
+        {{template "content" .}}
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-stone-300 mt-auto py-6 text-center text-sm text-stone-500">
+        &copy; 2026 Searlo Cafe. All rights reserved.
+    </footer>
+
+    <!-- Alpine.js CSP build + component registration -->
+    <script src="/static/js/alpine-csp.min.js" defer></script>
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('navMenu', () => ({
+                mobileMenuOpen: false,
+                toggle() { this.mobileMenuOpen = !this.mobileMenuOpen; }
+            }));
+            Alpine.data('userDropdown', () => ({
+                dropdownOpen: false,
+                toggleDropdown() { this.dropdownOpen = !this.dropdownOpen; }
+            }));
+            Alpine.data('togglePanel', () => ({
+                showNewCat: false,
+                toggle() { this.showNewCat = !this.showNewCat; }
+            }));
+            Alpine.data('editRow', () => ({
+                editing: false,
+                startEdit() { this.editing = true; },
+                cancelEdit() { this.editing = false; }
+            }));
+            Alpine.data('collapsible', () => ({
+                open: false,
+                toggle() { this.open = !this.open; }
+            }));
+            Alpine.data('tabSwitcher', () => ({
+                mode: 'manual',
+                setMode(m) { this.mode = m; }
+            }));
+            Alpine.data('mappingMode', () => ({
+                mode: 'existing',
+                setMode(m) { this.mode = m; }
+            }));
+            Alpine.data('unitPicker', (initialType) => ({
+                ingredientType: initialType || '',
+                setType(t) { this.ingredientType = t || ''; },
+                showOption(el) {
+                    return !this.ingredientType || el.dataset.unitType === this.ingredientType;
+                }
+            }));
+            Alpine.data('ingredientFilter', () => ({
+                query: '',
+                open: false,
+                init() {
+                    this.hidden = this.$el.querySelector('input[data-ingredient-id]');
+                    this.input = this.$el.querySelector('input[type="text"]');
+                    this.markInvalid();
+                },
+                visibleEl(el) {
+                    const q = this.query.trim().toLowerCase();
+                    if (q === '') return true;
+                    const hay = (el.dataset.name + ' ' + (el.dataset.unit || '')).toLowerCase();
+                    return hay.includes(q);
+                },
+                markInvalid() {
+                    if (this.input) this.input.setCustomValidity('Please select an ingredient from the list');
+                },
+                markValid() {
+                    if (this.input) this.input.setCustomValidity('');
+                },
+                selectEl(el) {
+                    this.query = el.dataset.name;
+                    if (this.hidden) this.hidden.value = el.dataset.id;
+                    this.open = false;
+                    this.markValid();
+                    this.$dispatch('ingredient-selected', { unitType: el.dataset.unitType || '' });
+                },
+                onInput() {
+                    this.open = true;
+                    if (this.hidden) this.hidden.value = '';
+                    this.markInvalid();
+                },
+                close() {
+                    setTimeout(() => { this.open = false; }, 150);
+                },
+            }));
+            Alpine.data('purchaseCalc', () => ({
+                mode: 'purchase',
+                units: [],
+                purchaseQty: '',
+                purchaseUnitId: '',
+                purchasePrice: '',
+                baseUnitId: '',
+                init() {
+                    var el = document.getElementById('units-json');
+                    if (el) this.units = JSON.parse(el.textContent);
+                },
+                baseUnit() {
+                    return this.units.find(u => u.id === this.baseUnitId) || null;
+                },
+                purchUnit() {
+                    return this.units.find(u => u.id === this.purchaseUnitId) || null;
+                },
+                showPurchaseUnit(el) {
+                    var bu = this.baseUnit();
+                    if (!bu) return true;
+                    return el.dataset.unitType === bu.unit_type;
+                },
+                setBaseUnit(id) {
+                    this.baseUnitId = id;
+                    var bu = this.baseUnit();
+                    var pu = this.purchUnit();
+                    if (!this.purchaseUnitId || (pu && bu && pu.unit_type !== bu.unit_type)) {
+                        this.purchaseUnitId = id;
+                    }
+                },
+                calcCost() {
+                    var qty = parseFloat(this.purchaseQty);
+                    var price = parseFloat(this.purchasePrice);
+                    var pu = this.purchUnit();
+                    var bu = this.baseUnit();
+                    if (!qty || qty <= 0 || !price || price < 0 || !pu || !bu) return null;
+                    if (pu.unit_type !== bu.unit_type) return null;
+                    var fromF = pu.cf != null ? pu.cf : 1.0;
+                    var toF = bu.cf != null ? bu.cf : 1.0;
+                    return (price / qty) * (toF / fromF);
+                },
+                costDisplay() {
+                    var c = this.calcCost();
+                    if (c === null) return '';
+                    var bu = this.baseUnit();
+                    return 'MVR ' + c.toFixed(4) + ' per ' + (bu ? bu.abbr : '');
+                },
+                costValue() {
+                    var c = this.calcCost();
+                    return c !== null ? c.toFixed(4) : '';
+                },
+                setMode(m) { this.mode = m; }
+            }));
+            Alpine.data('ingredientsList', () => ({
+                query: '',
+                sortOpen: false,
+                init() {
+                    var url = new URL(window.location.href);
+                    this.query = url.searchParams.get('search') || '';
+                },
+                toggleSort() { this.sortOpen = !this.sortOpen; },
+                closeSort() { this.sortOpen = false; },
+                selectSort(value) {
+                    this.$refs.sortField.value = value;
+                    this.$refs.filterForm.submit();
+                },
+                toggleStock() {
+                    var f = this.$refs.stockField;
+                    f.value = f.value === 'low' ? '' : 'low';
+                    this.$refs.filterForm.submit();
+                },
+                rowVisible(el) {
+                    var q = this.query.trim().toLowerCase();
+                    if (q === '') return true;
+                    return (el.dataset.name || '').includes(q);
+                },
+                noMatches() {
+                    var q = this.query.trim().toLowerCase();
+                    if (q === '') return false;
+                    var rows = this.$el.querySelectorAll('[data-name]');
+                    for (var i = 0; i < rows.length; i++) {
+                        if ((rows[i].dataset.name || '').includes(q)) return false;
+                    }
+                    return rows.length > 0;
+                }
+            }));
+        });
+
+        // Initialize Lucide Icons + active nav highlighting
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            document.body.addEventListener('htmx:afterSwap', () => {
+                lucide.createIcons();
+            });
+
+            // Highlight active nav link
+            var path = window.location.pathname;
+            document.querySelectorAll('.nav-link').forEach(function(link) {
+                var nav = link.getAttribute('data-nav');
+                if (nav && (path === nav || path.startsWith(nav + '/'))) {
+                    link.classList.add('bg-white', 'text-primary', 'font-semibold');
+                    link.classList.remove('text-stone-700');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+{{end}}

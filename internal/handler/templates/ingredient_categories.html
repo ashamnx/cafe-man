@@ -1,0 +1,87 @@
+{{define "content"}}
+<div class="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
+    <div class="flex items-center gap-3">
+        <a href="/ingredients" class="p-2 -ml-2 rounded-full text-stone-600 hover:text-stone-900 hover:bg-white transition-colors">
+            <i data-lucide="arrow-left" class="w-5 h-5"></i>
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-stone-900 flex items-center gap-2">
+                <i data-lucide="tags" class="w-6 h-6 text-primary"></i>
+                Ingredient Categories
+            </h1>
+            <p class="text-sm text-stone-600 mt-1">Group ingredients for easier filtering on the inventory page</p>
+        </div>
+    </div>
+</div>
+
+<!-- Create new category -->
+<div class="bg-surface border border-stone-200 rounded-2xl shadow-sm p-6 mb-6">
+    <h2 class="text-sm font-semibold text-stone-900 mb-3 flex items-center gap-2">
+        <i data-lucide="plus-circle" class="w-4 h-4 text-primary"></i> Add Category
+    </h2>
+    <form method="POST" action="/ingredients/categories" hx-post="/ingredients/categories" class="flex flex-col sm:flex-row gap-3">
+        <input type="text" name="name" required placeholder="Category name (e.g. Dairy, Spices)"
+               class="flex-grow rounded-lg border-0 py-2 px-3 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary text-sm">
+        <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover transition-colors whitespace-nowrap">
+            <i data-lucide="plus" class="w-4 h-4"></i> Add
+        </button>
+    </form>
+</div>
+
+{{if not .Categories}}
+<div class="text-center py-16 px-4 bg-surface border border-stone-200 rounded-2xl shadow-sm">
+    <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 text-stone-600">
+        <i data-lucide="tags" class="w-8 h-8"></i>
+    </div>
+    <h3 class="text-lg font-medium text-stone-900 mb-2">No categories yet</h3>
+    <p class="text-stone-600 max-w-sm mx-auto">Add your first category above to start organising ingredients.</p>
+</div>
+{{else}}
+<div class="bg-surface border border-stone-200 rounded-2xl shadow-sm overflow-hidden p-0">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-stone-700">
+            <thead class="text-xs uppercase bg-stone-100 text-stone-600 font-semibold border-b border-stone-200">
+                <tr>
+                    <th scope="col" class="px-6 py-4">Name</th>
+                    <th scope="col" class="px-6 py-4 w-40">Ingredients</th>
+                    <th scope="col" class="px-6 py-4 text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-stone-200">
+                {{range .Categories}}
+                <tr class="hover:bg-stone-50 transition-colors">
+                    <td class="px-6 py-3">
+                        <input type="text" name="name" value="{{.Name}}" required
+                               class="block w-full rounded-md border-0 py-1.5 px-2 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary text-sm font-medium">
+                    </td>
+                    <td class="px-6 py-3">
+                        {{$count := index $.CategoryCounts .ID}}
+                        <a href="/ingredients?category_id={{.ID}}" class="inline-flex items-center gap-1 text-stone-700 hover:text-primary transition-colors">
+                            <span class="font-medium">{{$count}}</span>
+                            <span class="text-stone-500 text-xs">ingredient{{if ne $count 1}}s{{end}}</span>
+                        </a>
+                    </td>
+                    <td class="px-6 py-3 text-right whitespace-nowrap">
+                        <button type="button"
+                                hx-put="/ingredients/categories/{{.ID}}"
+                                hx-include="closest tr"
+                                class="inline-flex items-center gap-1 rounded-md bg-stone-100 hover:bg-stone-200 px-3 py-1.5 text-xs font-semibold text-stone-700 transition-colors" title="Save changes">
+                            <i data-lucide="save" class="w-3.5 h-3.5"></i> Save
+                        </button>
+                        <button type="button"
+                                hx-delete="/ingredients/categories/{{.ID}}"
+                                hx-confirm="Delete category &quot;{{.Name}}&quot;? Ingredients in this category will become uncategorized."
+                                class="inline-flex items-center gap-1 rounded-md bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-500 transition-colors ml-1" title="Delete">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</div>
+{{end}}
+{{end}}
+
+{{template "layout" .}}

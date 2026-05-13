@@ -1,0 +1,121 @@
+{{define "content"}}
+<div class="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
+    <div>
+        <h1 class="text-2xl font-bold tracking-tight text-stone-900 flex items-center gap-2">
+            <i data-lucide="receipt" class="w-6 h-6 text-primary"></i>
+            Vendor Bills
+        </h1>
+        <p class="text-sm text-stone-600 mt-1">Manage uploaded invoices and parsing status</p>
+    </div>
+    <a href="/bills/upload" class="inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-white px-4 py-2.5 rounded-lg text-sm font-semibold shadow-sm transition-all focus:ring-2 focus:ring-primary focus:outline-none active:scale-95">
+        <i data-lucide="plus" class="w-4 h-4"></i> Add Bill
+    </a>
+</div>
+
+<!-- Filter Bar -->
+<form method="GET" action="/bills" class="flex flex-col sm:flex-row gap-3 mb-4">
+    <div class="relative flex-grow">
+        <i data-lucide="search" class="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+        <input type="text" name="search" value="{{index .Filters "search"}}" placeholder="Search bills, vendors, ingredients..."
+               class="block w-full rounded-lg border-0 py-2 pl-9 pr-3 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary text-sm">
+    </div>
+    <select name="status" onchange="this.form.submit()"
+            class="rounded-lg border-0 py-2 px-3 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary text-sm appearance-none cursor-pointer">
+        <option value="" {{if eq (index .Filters "status") ""}}selected{{end}}>All Status</option>
+        <option value="mapped" {{if eq (index .Filters "status") "mapped"}}selected{{end}}>Mapped</option>
+        <option value="partially_mapped" {{if eq (index .Filters "status") "partially_mapped"}}selected{{end}}>Partially Mapped</option>
+        <option value="processing" {{if eq (index .Filters "status") "processing"}}selected{{end}}>Processing</option>
+        <option value="pending" {{if eq (index .Filters "status") "pending"}}selected{{end}}>Pending</option>
+        <option value="failed" {{if eq (index .Filters "status") "failed"}}selected{{end}}>Failed</option>
+    </select>
+    <select name="sort" onchange="this.form.submit()"
+            class="rounded-lg border-0 py-2 px-3 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary text-sm appearance-none cursor-pointer">
+        <option value="" {{if eq (index .Filters "sort") ""}}selected{{end}}>Sort: Recent</option>
+        <option value="date_desc" {{if eq (index .Filters "sort") "date_desc"}}selected{{end}}>Sort: Date (Newest)</option>
+        <option value="date_asc" {{if eq (index .Filters "sort") "date_asc"}}selected{{end}}>Sort: Date (Oldest)</option>
+        <option value="amount_desc" {{if eq (index .Filters "sort") "amount_desc"}}selected{{end}}>Sort: Amount (High)</option>
+        <option value="amount_asc" {{if eq (index .Filters "sort") "amount_asc"}}selected{{end}}>Sort: Amount (Low)</option>
+    </select>
+    <button type="submit" class="sm:hidden inline-flex items-center justify-center gap-2 bg-stone-100 text-stone-700 px-4 py-2 rounded-lg text-sm font-semibold border border-stone-200">
+        <i data-lucide="search" class="w-4 h-4"></i> Search
+    </button>
+</form>
+
+{{if not .Bills}}
+<div class="text-center py-16 px-4 bg-surface border border-stone-200 rounded-2xl shadow-sm">
+    <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 text-stone-600">
+        <i data-lucide="file-up" class="w-8 h-8"></i>
+    </div>
+    <h3 class="text-lg font-medium text-stone-900 mb-2">{{if or (index .Filters "search") (index .Filters "status")}}No bills match your search{{else}}No bills yet{{end}}</h3>
+    <p class="text-stone-600 mb-6 max-w-sm mx-auto">{{if or (index .Filters "search") (index .Filters "status")}}Try a different search term or filter.{{else}}Scan vendor bills with AI or enter them manually to track purchases and update inventory.{{end}}</p>
+    {{if not (or (index .Filters "search") (index .Filters "status"))}}
+    <a href="/bills/upload" class="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-all">
+        <i data-lucide="plus" class="w-4 h-4"></i> Add your first bill
+    </a>
+    {{end}}
+</div>
+{{else}}
+<div class="bg-surface border border-stone-200 rounded-2xl shadow-sm overflow-hidden p-0">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-stone-700">
+            <thead class="text-xs uppercase bg-stone-100 text-stone-600 font-semibold border-b border-stone-200">
+                <tr>
+                    <th scope="col" class="px-6 py-4">Bill #</th>
+                    <th scope="col" class="px-6 py-4">Vendor</th>
+                    <th scope="col" class="px-6 py-4 hidden sm:table-cell">Date</th>
+                    <th scope="col" class="px-6 py-4 hidden md:table-cell">Items</th>
+                    <th scope="col" class="px-6 py-4 hidden md:table-cell">Total</th>
+                    <th scope="col" class="px-6 py-4">Status</th>
+                    <th scope="col" class="px-6 py-4 text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+                {{range .Bills}}
+                <tr class="hover:bg-stone-50 transition-colors">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <a href="/bills/{{.ID}}" class="font-medium text-stone-900 hover:text-primary transition-colors flex items-center gap-2">
+                            <i data-lucide="file-text" class="w-4 h-4 text-stone-500"></i>
+                            {{if .BillNumber}}{{.BillNumber}}{{else}}<span class="text-stone-500 italic font-normal">No number</span>{{end}}
+                        </a>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-stone-700">
+                        {{if .Vendor}}{{.Vendor.Name}}{{else}}<span class="text-stone-500 italic">Unknown</span>{{end}}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-stone-700 hidden sm:table-cell">
+                        {{if .BillDate}}{{.BillDate.Format "2006-01-02"}}{{else}}—{{end}}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap hidden md:table-cell">
+                        {{if gt .ItemCount 0}}
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-blue-500/10 text-blue-600 border border-blue-500/20">
+                            <i data-lucide="list" class="w-3 h-3"></i> {{.ItemCount}}
+                        </span>
+                        {{else}}<span class="text-stone-400 text-xs">0</span>{{end}}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap font-mono hidden md:table-cell">
+                        {{if .TotalAmount}}{{money (deref .TotalAmount)}}{{else}}<span class="text-stone-400">—</span>{{end}}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] uppercase tracking-wider font-semibold border
+                            {{if eq .Status "mapped"}}bg-emerald-500/10 text-emerald-400 border-emerald-500/20
+                            {{else if eq .Status "pending"}}bg-slate-500/10 text-stone-700 border-stone-300/20
+                            {{else if eq .Status "partially_mapped"}}bg-yellow-500/10 text-yellow-500 border-yellow-500/20
+                            {{else if eq .Status "failed"}}bg-red-500/10 text-red-400 border-red-500/20
+                            {{else}}bg-white text-stone-700 border-stone-300{{end}}">
+                            {{.Status}}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
+                        <a href="/bills/{{.ID}}" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-stone-100 text-stone-700 border border-stone-200 hover:text-stone-900 hover:bg-stone-100 hover:border-stone-300 transition-all">
+                            View <i data-lucide="chevron-right" class="w-3 h-3"></i>
+                        </a>
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</div>
+{{end}}
+{{end}}
+
+{{template "layout" .}}

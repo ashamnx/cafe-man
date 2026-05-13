@@ -1,0 +1,278 @@
+{{define "content"}}
+<div class="mb-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <a href="/ingredients" class="p-2 -ml-2 rounded-full text-stone-600 hover:text-stone-900 hover:bg-white transition-colors">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+            </a>
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight text-stone-900">{{.Ingredient.Name}}</h1>
+                <div class="flex items-center gap-2 mt-1">
+                    {{if .Ingredient.Category}}<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-white text-stone-700 border border-stone-300">{{.Ingredient.Category.Name}}</span>{{end}}
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center gap-3 sm:ml-auto">
+            <a href="/ingredients/{{.Ingredient.ID}}/edit" class="inline-flex items-center gap-2 bg-white hover:bg-stone-100 text-stone-900 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-stone-200">
+                <i data-lucide="edit-2" class="w-4 h-4"></i> Edit
+            </a>
+            <button class="inline-flex items-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-red-500/20"
+                    hx-delete="/ingredients/{{.Ingredient.ID}}"
+                    hx-confirm="Delete this ingredient?">
+                <i data-lucide="trash-2" class="w-4 h-4"></i> Delete
+            </button>
+        </div>
+    </div>
+</div>
+
+{{if .Ingredient.ImagePath}}
+<style>.ing-stats{grid-template-columns:1fr}@media(min-width:640px){.ing-stats{grid-template-columns:140px repeat(3,1fr)}}</style>
+{{end}}
+<div class="grid ing-stats {{if not .Ingredient.ImagePath}}grid-cols-1 sm:grid-cols-3{{end}} items-end gap-4 mb-6">
+    {{if .Ingredient.ImagePath}}
+    <div class="border border-stone-200 rounded-2xl shadow-sm" style="background-image:url('{{imageURL .Ingredient.ImagePath}}'); background-size:cover; background-position:center; aspect-ratio:1;"></div>
+    {{end}}
+    <div class="bg-surface border border-stone-200 rounded-2xl p-6 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-medium text-stone-600">Current Stock</h3>
+            <div class="p-2 bg-blue-500/10 rounded-lg text-blue-400"><i data-lucide="package" class="w-5 h-5"></i></div>
+        </div>
+        <div class="flex items-baseline gap-2">
+            <div class="text-3xl font-bold {{if and .Ingredient.LowStockThreshold (lt .Ingredient.CurrentStock (deref .Ingredient.LowStockThreshold))}}text-red-400{{else}}text-stone-900{{end}}">
+                {{money .Ingredient.CurrentStock}}
+            </div>
+            <div class="text-sm text-stone-600">{{if .Ingredient.Unit}}{{.Ingredient.Unit.Abbreviation}}{{end}}</div>
+        </div>
+        {{if .Ingredient.LowStockThreshold}}
+        <div class="text-xs text-stone-500 mt-2">Threshold: <span class="text-stone-600">{{money (deref .Ingredient.LowStockThreshold)}}</span></div>
+        {{end}}
+    </div>
+    <div class="bg-surface border border-stone-200 rounded-2xl p-6 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-medium text-stone-600">Cost per Unit</h3>
+            <div class="p-2 bg-emerald-500/10 rounded-lg text-emerald-400"><i data-lucide="dollar-sign" class="w-5 h-5"></i></div>
+        </div>
+        <div class="text-3xl font-bold text-stone-900 tracking-tight">{{money .Ingredient.CurrentCostPerUnit}}</div>
+        <div class="text-sm text-stone-600 mt-1">per {{if .Ingredient.Unit}}{{.Ingredient.Unit.Abbreviation}}{{end}}</div>
+    </div>
+    <div class="bg-surface border border-stone-200 rounded-2xl p-6 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-medium text-stone-600">Price Alert</h3>
+            <div class="p-2 bg-purple-500/10 rounded-lg text-purple-400"><i data-lucide="trending-up" class="w-5 h-5"></i></div>
+        </div>
+        <div class="text-3xl font-bold text-stone-900">{{pct .Ingredient.PriceAlertPercentage}}</div>
+        <div class="text-sm text-stone-600 mt-1">increase threshold</div>
+    </div>
+</div>
+
+<div class="bg-surface border border-stone-200 rounded-2xl shadow-sm p-6 mb-6" x-data="unitPicker('{{if .Ingredient.Unit}}{{.Ingredient.Unit.UnitType}}{{end}}')">
+    <h3 class="font-semibold text-stone-900 flex items-center gap-2 mb-4">
+        <i data-lucide="sliders" class="w-4 h-4 text-stone-600"></i>
+        Adjust Stock
+    </h3>
+    <form method="POST" action="/ingredients/{{.Ingredient.ID}}/adjust-stock" hx-post="/ingredients/{{.Ingredient.ID}}/adjust-stock"
+          class="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+        <div class="w-full sm:w-32">
+            <label class="block text-xs font-medium text-stone-600 mb-1">Direction</label>
+            <select name="direction" required class="block w-full rounded-lg border-0 py-2 px-3 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary text-sm appearance-none cursor-pointer">
+                <option value="add">Add</option>
+                <option value="remove">Remove</option>
+            </select>
+        </div>
+        <div class="w-full sm:w-auto sm:flex-1">
+            <label class="block text-xs font-medium text-stone-600 mb-1">Quantity</label>
+            <div class="flex rounded-lg shadow-sm ring-1 ring-inset ring-stone-200 focus-within:ring-2 focus-within:ring-inset focus-within:ring-primary">
+                <input type="number" step="0.0001" min="0.0001" name="quantity" required placeholder="0"
+                       class="block w-full border-0 py-2 px-3 bg-white text-stone-900 text-sm font-mono rounded-l-lg focus:ring-0">
+                <select name="quantity_unit_id" class="border-0 border-l border-stone-200 py-2 pl-2 pr-2 bg-stone-50 text-stone-900 text-sm rounded-r-lg focus:ring-0">
+                    {{range .Units}}
+                    <option value="{{.ID}}" data-unit-type="{{.UnitType}}" x-show="showOption($el)" {{if eq .ID.String $.Ingredient.UnitID.String}}selected{{end}}>{{.Abbreviation}}</option>
+                    {{end}}
+                </select>
+            </div>
+        </div>
+        <div class="w-full sm:flex-1">
+            <label class="block text-xs font-medium text-stone-600 mb-1">Reason <span class="text-stone-400 font-normal">(optional)</span></label>
+            <input type="text" name="notes" placeholder="e.g. correcting initial entry"
+                   class="block w-full rounded-lg border-0 py-2 px-3 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary text-sm">
+        </div>
+        <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-primary hover:bg-primary-hover px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors">
+            <i data-lucide="check" class="w-4 h-4"></i> Apply
+        </button>
+    </form>
+</div>
+
+{{if .History}}
+<div class="bg-surface border border-stone-200 rounded-2xl shadow-sm p-6 mb-6">
+    <h3 class="font-semibold text-stone-900 flex items-center gap-2 mb-4">
+        <i data-lucide="activity" class="w-4 h-4 text-stone-600"></i>
+        Price Trend
+    </h3>
+    <div class="relative" style="height: 250px;">
+        <canvas id="priceChart"></canvas>
+    </div>
+</div>
+{{end}}
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    {{if .Ingredient.Description}}
+    <div class="lg:col-span-1 border border-stone-200 shadow-sm rounded-2xl overflow-hidden bg-surface p-6 h-fit">
+        <h3 class="text-sm font-medium text-stone-900 mb-3 uppercase tracking-wider">Description</h3>
+        <p class="text-stone-700 text-sm leading-relaxed">{{.Ingredient.Description}}</p>
+    </div>
+    {{end}}
+
+    <div class="{{if .Ingredient.Description}}lg:col-span-2{{else}}lg:col-span-3{{end}}">
+        <div class="bg-surface border border-stone-200 rounded-2xl shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-stone-200 bg-stone-50">
+                <h3 class="font-semibold text-stone-900 flex items-center gap-2">
+                    <i data-lucide="history" class="w-4 h-4 text-stone-600"></i>
+                    Price History
+                </h3>
+            </div>
+            
+            {{if not .History}}
+            <div class="p-8 text-center">
+                <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 text-stone-500">
+                    <i data-lucide="activity" class="w-6 h-6"></i>
+                </div>
+                <p class="text-stone-600 text-sm">No price changes recorded yet.</p>
+            </div>
+            {{else}}
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-stone-700">
+                    <thead class="text-xs uppercase bg-stone-100 text-stone-600 font-semibold border-b border-stone-200">
+                        <tr>
+                            <th scope="col" class="px-6 py-4">Date</th>
+                            <th scope="col" class="px-6 py-4">Old Price</th>
+                            <th scope="col" class="px-6 py-4">New Price</th>
+                            <th scope="col" class="px-6 py-4">Change</th>
+                            <th scope="col" class="px-6 py-4 text-right">Source</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5">
+                        {{range .History}}
+                        <tr class="hover:bg-stone-50 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap text-stone-600">{{.RecordedAt.Format "Jan 02, 2006 15:04"}}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-stone-900 font-mono">{{money .OldCostPerUnit}}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-stone-900 font-mono">{{money .NewCostPerUnit}}</td>
+                            <td class="px-6 py-4 whitespace-nowrap font-medium {{if gt .ChangePercentage 0.0}}text-red-400{{else if lt .ChangePercentage 0.0}}text-emerald-400{{else}}text-stone-600{{end}}">
+                                <div class="flex items-center gap-1">
+                                    {{if gt .ChangePercentage 0.0}}<i data-lucide="trending-up" class="w-3 h-3"></i>
+                                    {{else if lt .ChangePercentage 0.0}}<i data-lucide="trending-down" class="w-3 h-3"></i>{{end}}
+                                    {{pct .ChangePercentage}}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-stone-600 text-[10px] uppercase tracking-wider font-semibold">{{.Source}}</td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+            {{end}}
+        </div>
+    </div>
+</div>
+
+{{if .RecentBills}}
+<div class="bg-surface border border-stone-200 rounded-2xl shadow-sm overflow-hidden mt-6">
+    <div class="px-6 py-4 border-b border-stone-200 bg-stone-50">
+        <h3 class="font-semibold text-stone-900 flex items-center gap-2">
+            <i data-lucide="receipt" class="w-4 h-4 text-stone-600"></i>
+            Recent Bills
+        </h3>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-stone-700">
+            <thead class="text-xs uppercase bg-stone-100 text-stone-600 font-semibold border-b border-stone-200">
+                <tr>
+                    <th scope="col" class="px-6 py-4">Bill #</th>
+                    <th scope="col" class="px-6 py-4">Vendor</th>
+                    <th scope="col" class="px-6 py-4">Date</th>
+                    <th scope="col" class="px-6 py-4">Status</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+                {{range .RecentBills}}
+                <tr class="hover:bg-stone-50 transition-colors">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <a href="/bills/{{.ID}}" class="font-medium text-primary hover:text-primary-hover transition-colors flex items-center gap-2">
+                            <i data-lucide="file-text" class="w-4 h-4 text-stone-500"></i>
+                            {{if .BillNumber}}{{.BillNumber}}{{else}}<span class="text-stone-500 italic font-normal">Untitled</span>{{end}}
+                        </a>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-stone-700">
+                        {{if .Vendor}}{{.Vendor.Name}}{{else}}<span class="text-stone-500 italic">Unknown</span>{{end}}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-stone-600">
+                        {{if .BillDate}}{{.BillDate.Format "Jan 02, 2006"}}{{else}}—{{end}}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-semibold border
+                            {{if eq .Status "mapped"}}bg-emerald-500/10 text-emerald-400 border-emerald-500/20
+                            {{else if eq .Status "partially_mapped"}}bg-yellow-500/10 text-yellow-500 border-yellow-500/20
+                            {{else}}bg-white text-stone-700 border-stone-300{{end}}">
+                            {{.Status}}
+                        </span>
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</div>
+{{end}}
+
+{{if .History}}
+<script src="/static/js/chart.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var ctx = document.getElementById('priceChart');
+    if (!ctx) return;
+
+    // History is DESC — reverse for chronological chart.
+    var labels = [{{range .History}}"{{.RecordedAt.Format "Jan 02"}}",{{end}}].reverse();
+    var prices = [{{range .History}}{{.NewCostPerUnit}},{{end}}].reverse();
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Cost per Unit (MVR)',
+                data: prices,
+                borderColor: 'rgba(217, 119, 6, 1)',
+                backgroundColor: 'rgba(217, 119, 6, 0.1)',
+                borderWidth: 2,
+                pointBackgroundColor: 'rgba(217, 119, 6, 1)',
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    grid: { color: 'rgba(0,0,0,0.05)' },
+                    ticks: { font: { size: 11 } }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { font: { size: 11 } }
+                }
+            }
+        }
+    });
+});
+</script>
+{{end}}
+{{end}}
+
+{{template "layout" .}}

@@ -1,0 +1,168 @@
+{{define "content"}}
+<div class="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
+    <div>
+        <h1 class="text-2xl font-bold tracking-tight text-stone-900 flex items-center gap-2">
+            <i data-lucide="chef-hat" class="w-6 h-6 text-primary"></i>
+            Recipes
+        </h1>
+        <p class="text-sm text-stone-600 mt-1">Manage recipes and calculate margins</p>
+    </div>
+    <div class="flex items-center gap-3">
+        <a href="/recipes/preview" class="inline-flex items-center justify-center gap-2 bg-white hover:bg-stone-50 text-stone-700 px-4 py-2.5 rounded-lg text-sm font-semibold border border-stone-200 transition-all">
+            <i data-lucide="eye" class="w-4 h-4"></i> Preview
+        </a>
+        <a href="/recipes/new" class="inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-white px-4 py-2.5 rounded-lg text-sm font-semibold shadow-sm transition-all focus:ring-2 focus:ring-primary focus:outline-none active:scale-95">
+            <i data-lucide="plus" class="w-4 h-4"></i> Add Recipe
+        </a>
+    </div>
+</div>
+
+<!-- Filter Bar -->
+<form method="GET" action="/recipes" class="flex flex-col sm:flex-row gap-3 mb-4 flex-wrap">
+    <div class="relative flex-grow sm:max-w-xs">
+        <i data-lucide="search" class="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+        <input type="text" name="search" value="{{index .Filters "search"}}" placeholder="Search recipes..."
+               class="block w-full rounded-lg border-0 py-2 pl-9 pr-3 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary text-sm">
+    </div>
+    <select name="category" onchange="this.form.submit()"
+            class="rounded-lg border-0 py-2 px-3 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary text-sm appearance-none cursor-pointer">
+        <option value="">All Categories</option>
+        {{range .Categories}}
+        <option value="{{.Name}}" {{if eq (index $.Filters "category") .Name}}selected{{end}}>{{.Name}}</option>
+        {{end}}
+    </select>
+    <select name="status" onchange="this.form.submit()"
+            class="rounded-lg border-0 py-2 px-3 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary text-sm appearance-none cursor-pointer">
+        <option value="" {{if eq (index .Filters "status") ""}}selected{{end}}>All Status</option>
+        <option value="active" {{if eq (index .Filters "status") "active"}}selected{{end}}>Active</option>
+        <option value="draft" {{if eq (index .Filters "status") "draft"}}selected{{end}}>Draft</option>
+    </select>
+    <select name="ingredients" onchange="this.form.submit()"
+            class="rounded-lg border-0 py-2 px-3 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary text-sm appearance-none cursor-pointer">
+        <option value="">All Ingredients</option>
+        {{range .AllIngredients}}
+        <option value="{{.ID}}" {{if eq (index $.Filters "ingredients") (.ID.String)}}selected{{end}}>Contains: {{.Name}}</option>
+        {{end}}
+    </select>
+    <select name="sort" onchange="this.form.submit()"
+            class="rounded-lg border-0 py-2 px-3 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary text-sm appearance-none cursor-pointer">
+        <option value="" {{if eq (index .Filters "sort") ""}}selected{{end}}>Sort: Category</option>
+        <option value="name" {{if eq (index .Filters "sort") "name"}}selected{{end}}>Sort: Name</option>
+        <option value="price_asc" {{if eq (index .Filters "sort") "price_asc"}}selected{{end}}>Sort: Price (Low)</option>
+        <option value="price_desc" {{if eq (index .Filters "sort") "price_desc"}}selected{{end}}>Sort: Price (High)</option>
+        <option value="margin_desc" {{if eq (index .Filters "sort") "margin_desc"}}selected{{end}}>Sort: Margin (High)</option>
+        <option value="margin_asc" {{if eq (index .Filters "sort") "margin_asc"}}selected{{end}}>Sort: Margin (Low)</option>
+        <option value="cost_asc" {{if eq (index .Filters "sort") "cost_asc"}}selected{{end}}>Sort: Cost (Low)</option>
+        <option value="cost_desc" {{if eq (index .Filters "sort") "cost_desc"}}selected{{end}}>Sort: Cost (High)</option>
+    </select>
+    <button type="submit" class="sm:hidden inline-flex items-center justify-center gap-2 bg-stone-100 text-stone-700 px-4 py-2 rounded-lg text-sm font-semibold border border-stone-200">
+        <i data-lucide="search" class="w-4 h-4"></i> Search
+    </button>
+</form>
+
+{{if not .Items}}
+<div class="text-center py-12 px-4 bg-surface border border-stone-200 rounded-2xl shadow-sm">
+    <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 text-stone-600">
+        <i data-lucide="search-x" class="w-6 h-6"></i>
+    </div>
+    <h3 class="text-base font-medium text-stone-900 mb-1">{{if index .Filters "search"}}No recipes match your search{{else}}No recipes yet{{end}}</h3>
+    <p class="text-stone-600 text-sm">{{if index .Filters "search"}}Try adjusting your filters.{{else}}Create your first recipe to get started.{{end}}</p>
+</div>
+{{else}}
+{{range .Groups}}
+<div class="bg-surface border border-stone-200 rounded-2xl shadow-sm overflow-hidden mb-6">
+    <div class="px-6 py-3 bg-stone-50 border-b border-stone-200 flex items-center justify-between">
+        <h3 class="font-semibold text-stone-900 text-sm flex items-center gap-2">
+            <i data-lucide="folder" class="w-4 h-4 text-stone-500"></i>
+            {{.Category}}
+            <span class="text-xs text-stone-500 font-normal">({{len .Items}})</span>
+        </h3>
+        <div class="hidden sm:flex items-center gap-4 text-xs text-stone-500">
+            <span>Revenue: <span class="font-semibold text-stone-700">{{money .TotalRevenue}}</span></span>
+            <span>Cost: <span class="font-semibold text-stone-700">{{money .TotalCost}}</span></span>
+            <span>Profit: <span class="font-semibold text-emerald-600">{{money .TotalProfit}}</span></span>
+        </div>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-stone-700">
+            <thead class="text-[10px] uppercase bg-stone-100/50 text-stone-500 font-semibold border-b border-stone-200">
+                <tr>
+                    <th scope="col" class="px-6 py-3">Name</th>
+                    <th scope="col" class="px-6 py-3">Price</th>
+                    <th scope="col" class="px-6 py-3 hidden md:table-cell">Cost</th>
+                    <th scope="col" class="px-6 py-3">Margin</th>
+                    <th scope="col" class="px-6 py-3 hidden lg:table-cell">Net Profit</th>
+                    <th scope="col" class="px-6 py-3 hidden sm:table-cell">Status</th>
+                    <th scope="col" class="px-6 py-3 text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-stone-100">
+                {{range .Items}}
+                <tr class="hover:bg-stone-50 transition-colors">
+                    <td class="px-6 py-3.5 whitespace-nowrap">
+                        <div class="flex items-center gap-3">
+                            {{if .ImagePath}}
+                            <img src="{{thumbURL .ImagePath}}" alt="{{.Name}}" class="w-9 h-9 rounded-lg object-cover border border-stone-200 shrink-0">
+                            {{end}}
+                            <a href="/recipes/{{.ID}}" class="font-medium text-stone-900 hover:text-primary transition-colors">
+                                {{.Name}}
+                            </a>
+                            {{if gt (itof .Yield) 1.0}}
+                            <span class="text-xs text-stone-500 whitespace-nowrap">{{.Yield}} {{if .YieldUnit}}{{.YieldUnit}}s{{else}}portions{{end}}</span>
+                            {{end}}
+                        </div>
+                    </td>
+                    <td class="px-6 py-3.5 whitespace-nowrap text-stone-900 font-medium">
+                        {{money .SellingPrice}}
+                        {{if gt (itof .Yield) 1.0}}<span class="block text-[10px] text-stone-500 font-normal">per {{if .YieldUnit}}{{.YieldUnit}}{{else}}portion{{end}}</span>{{end}}
+                    </td>
+                    <td class="px-6 py-3.5 whitespace-nowrap text-stone-600 hidden md:table-cell">
+                        {{if gt (itof .Yield) 1.0}}
+                        {{money .CostPerPortion}}
+                        <span class="block text-[10px] text-stone-400 font-normal font-mono">batch {{money .TotalCost}}</span>
+                        {{else}}
+                        {{money .TotalCost}}
+                        {{end}}
+                    </td>
+                    <td class="px-6 py-3.5 whitespace-nowrap font-medium
+                        {{if lt .CostMargin 30.0}}text-red-400
+                        {{else if lt .CostMargin 50.0}}text-yellow-400
+                        {{else}}text-emerald-400{{end}}">
+                        {{pct .CostMargin}}
+                    </td>
+                    <td class="px-6 py-3.5 whitespace-nowrap text-stone-700 hidden lg:table-cell">
+                        {{money .NetProfit}}
+                    </td>
+                    <td class="px-6 py-3.5 whitespace-nowrap hidden sm:table-cell">
+                        {{if eq .Status "active"}}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">Active</span>
+                        {{else if eq .Status "draft"}}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-yellow-500/10 text-yellow-600 border border-yellow-500/20">Draft</span>
+                        {{end}}
+                    </td>
+                    <td class="px-6 py-3.5 whitespace-nowrap text-right text-sm">
+                        <a href="/recipes/{{.ID}}" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-stone-100 text-stone-700 border border-stone-200 hover:text-stone-900 hover:border-stone-300 transition-all">
+                            View <i data-lucide="chevron-right" class="w-3 h-3"></i>
+                        </a>
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+            <!-- Group totals (mobile) -->
+            <tfoot class="sm:hidden border-t border-stone-200 bg-stone-50">
+                <tr>
+                    <td colspan="7" class="px-6 py-3 text-xs text-stone-500">
+                        Revenue: <span class="font-semibold text-stone-700">{{money .TotalRevenue}}</span> &middot;
+                        Cost: <span class="font-semibold text-stone-700">{{money .TotalCost}}</span> &middot;
+                        Profit: <span class="font-semibold text-emerald-600">{{money .TotalProfit}}</span>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+{{end}}
+{{end}}
+{{end}}
+
+{{template "layout" .}}

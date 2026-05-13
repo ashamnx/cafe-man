@@ -1,0 +1,91 @@
+{{define "content"}}
+<div class="mb-6">
+    <div class="flex items-center gap-3">
+        <a href="/vendors" class="p-2 -ml-2 rounded-full text-stone-600 hover:text-stone-900 hover:bg-white transition-colors">
+            <i data-lucide="arrow-left" class="w-5 h-5"></i>
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-stone-900">{{.Title}}</h1>
+            <p class="text-sm text-stone-600 mt-1">{{if .IsEdit}}Update vendor details{{else}}Add a new vendor to your contacts{{end}}</p>
+        </div>
+    </div>
+</div>
+
+{{if .Error}}
+<div class="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl text-sm mb-6 flex items-start gap-3">
+    <i data-lucide="alert-circle" class="w-5 h-5 shrink-0 mt-0.5"></i>
+    <div>{{.Error}}</div>
+</div>
+{{end}}
+
+<div class="bg-surface border border-stone-200 rounded-2xl shadow-sm p-6 sm:p-8 max-w-3xl">
+    <form method="POST"
+          {{if .IsEdit}}
+            hx-put="/vendors/{{.Vendor.ID}}"
+            action="/vendors/{{.Vendor.ID}}"
+          {{else}}
+            hx-post="/vendors"
+            action="/vendors"
+          {{end}} class="space-y-6">
+        
+        <!-- Company Info -->
+        <div>
+            <label for="name" class="block text-sm font-medium text-stone-700 mb-2">Vendor Name</label>
+            <input type="text" id="name" name="name" class="block w-full rounded-lg border-0 py-2.5 px-3.5 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm placeholder:text-stone-500 transition-all font-medium"
+                   value="{{if .Vendor}}{{.Vendor.Name}}{{end}}" required autofocus>
+        </div>
+
+        <!-- Contact Info -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div>
+                <label for="contact_name" class="block text-sm font-medium text-stone-700 mb-2">Contact Person <span class="text-stone-500 font-normal">(Optional)</span></label>
+                <input type="text" id="contact_name" name="contact_name" class="block w-full rounded-lg border-0 py-2.5 px-3.5 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm placeholder:text-stone-500 transition-all"
+                       value="{{if .Vendor}}{{.Vendor.ContactName}}{{end}}">
+            </div>
+            <div>
+                <label for="phone" class="block text-sm font-medium text-stone-700 mb-2">Phone</label>
+                <div class="relative">
+                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-stone-500">
+                        <i data-lucide="phone" class="w-4 h-4"></i>
+                    </div>
+                    <input type="tel" id="phone" name="phone" class="block w-full rounded-lg border-0 py-2.5 pl-10 pr-3.5 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm placeholder:text-stone-500 transition-all font-mono"
+                           value="{{if .Vendor}}{{.Vendor.Phone}}{{end}}">
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <label for="email" class="block text-sm font-medium text-stone-700 mb-2">Email address</label>
+            <div class="relative">
+                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-stone-500">
+                    <i data-lucide="mail" class="w-4 h-4"></i>
+                </div>
+                <input type="email" id="email" name="email" class="block w-full rounded-lg border-0 py-2.5 pl-10 pr-3.5 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm placeholder:text-stone-500 transition-all"
+                       value="{{if .Vendor}}{{.Vendor.Email}}{{end}}">
+            </div>
+        </div>
+
+        <div>
+            <label for="address" class="block text-sm font-medium text-stone-700 mb-2">Address</label>
+            <textarea id="address" name="address" rows="3" class="block w-full rounded-lg border-0 py-2.5 px-3.5 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm placeholder:text-stone-500 transition-all">{{if .Vendor}}{{.Vendor.Address}}{{end}}</textarea>
+        </div>
+
+        <div>
+            <label for="notes" class="block text-sm font-medium text-stone-700 mb-2">Notes <span class="text-stone-500 font-normal">(Internal only)</span></label>
+            <textarea id="notes" name="notes" rows="3" class="block w-full rounded-lg border-0 py-2.5 px-3.5 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm placeholder:text-stone-500 transition-all">{{if .Vendor}}{{.Vendor.Notes}}{{end}}</textarea>
+        </div>
+
+        <div class="flex flex-col-reverse sm:flex-row items-center gap-3 pt-6 border-t border-stone-200 mt-6">
+            <a href="/vendors" class="w-full sm:w-auto inline-flex items-center justify-center rounded-lg px-6 py-2.5 text-sm font-semibold text-stone-700 hover:text-stone-900 hover:bg-white transition-colors">
+                Cancel
+            </a>
+            <button type="submit" class="w-full sm:w-auto sm:ml-auto inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-all active:scale-95">
+                <i data-lucide="{{if .IsEdit}}save{{else}}plus{{end}}" class="w-4 h-4"></i>
+                {{if .IsEdit}}Update Vendor{{else}}Create Vendor{{end}}
+            </button>
+        </div>
+    </form>
+</div>
+{{end}}
+
+{{template "layout" .}}

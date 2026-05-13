@@ -1,0 +1,22 @@
+{{define "price_history"}}
+{{if not .History}}
+<p class="text-muted">No price changes recorded.</p>
+{{else}}
+<table>
+    <thead>
+        <tr><th>Date</th><th>Old</th><th>New</th><th>Change</th><th>Source</th></tr>
+    </thead>
+    <tbody>
+        {{range .History}}
+        <tr>
+            <td>{{.RecordedAt.Format "2006-01-02 15:04"}}</td>
+            <td>{{money .OldCostPerUnit}}</td>
+            <td>{{money .NewCostPerUnit}}</td>
+            <td class="{{if gt .ChangePercentage 0.0}}text-danger{{else}}text-success{{end}}">{{pct .ChangePercentage}}</td>
+            <td>{{.Source}}</td>
+        </tr>
+        {{end}}
+    </tbody>
+</table>
+{{end}}
+{{end}}

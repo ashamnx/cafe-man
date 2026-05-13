@@ -1,0 +1,87 @@
+{{define "content"}}
+<div class="mb-6">
+    <div class="flex items-center gap-3">
+        <a href="/bills/{{.Bill.ID}}" class="p-2 -ml-2 rounded-full text-stone-600 hover:text-stone-900 hover:bg-white transition-colors">
+            <i data-lucide="arrow-left" class="w-5 h-5"></i>
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-stone-900">Edit Bill</h1>
+            <p class="text-sm text-stone-600 mt-1">Update bill details</p>
+        </div>
+    </div>
+</div>
+
+<div class="bg-surface border border-stone-200 rounded-2xl shadow-sm p-6 sm:p-8 max-w-3xl">
+    <form method="POST" hx-put="/bills/{{.Bill.ID}}" action="/bills/{{.Bill.ID}}" enctype="multipart/form-data" class="space-y-6">
+
+        <div>
+            <label for="vendor_id" class="block text-sm font-medium text-stone-700 mb-2">Vendor</label>
+            <select id="vendor_id" name="vendor_id" class="block w-full rounded-lg border-0 py-2.5 px-3.5 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm transition-all appearance-none cursor-pointer">
+                <option value="">No vendor</option>
+                {{$billVendorID := .Bill.VendorID}}
+                {{range .Vendors}}
+                <option value="{{.ID}}" {{if $billVendorID}}{{if eq $billVendorID.String .ID.String}}selected{{end}}{{end}}>{{.Name}}</option>
+                {{end}}
+            </select>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div>
+                <label for="bill_number" class="block text-sm font-medium text-stone-700 mb-2">Bill Number</label>
+                <input type="text" id="bill_number" name="bill_number" value="{{.Bill.BillNumber}}"
+                       class="block w-full rounded-lg border-0 py-2.5 px-3.5 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm placeholder:text-stone-500 transition-all font-mono"
+                       placeholder="INV-001">
+            </div>
+            <div>
+                <label for="bill_date" class="block text-sm font-medium text-stone-700 mb-2">Bill Date</label>
+                <input type="date" id="bill_date" name="bill_date" value="{{if .Bill.BillDate}}{{.Bill.BillDate.Format "2006-01-02"}}{{end}}"
+                       class="block w-full rounded-lg border-0 py-2.5 px-3.5 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm transition-all">
+            </div>
+        </div>
+
+        <div>
+            <label for="total_amount" class="block text-sm font-medium text-stone-700 mb-2">Total Amount</label>
+            <input type="number" step="0.01" id="total_amount" name="total_amount" value="{{if .Bill.TotalAmount}}{{inputDecimal (deref .Bill.TotalAmount)}}{{end}}"
+                   class="block w-full rounded-lg border-0 py-2.5 px-3.5 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm placeholder:text-stone-500 transition-all font-mono"
+                   placeholder="0.00">
+        </div>
+
+        <div>
+            <label for="notes" class="block text-sm font-medium text-stone-700 mb-2">Notes <span class="text-stone-500 font-normal">(optional)</span></label>
+            <textarea id="notes" name="notes" rows="3" class="block w-full rounded-lg border-0 py-2.5 px-3.5 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm placeholder:text-stone-500 transition-all">{{.Bill.Notes}}</textarea>
+        </div>
+
+        <!-- Bill Image -->
+        <div class="pt-4 border-t border-stone-200">
+            <label class="block text-sm font-medium text-stone-700 mb-2">Bill Image</label>
+            {{if .Bill.ImagePath}}
+            <div class="mb-4 flex items-start gap-4">
+                <a href="{{imageURL .Bill.ImagePath}}" target="_blank">
+                    <img src="{{imageURL .Bill.ImagePath}}" alt="Current bill image" class="w-32 h-32 object-cover rounded-xl border border-stone-200 shadow-sm hover:shadow-md transition-shadow">
+                </a>
+                <div class="text-sm text-stone-600">
+                    <p class="font-medium text-stone-700 mb-1">Current image attached</p>
+                    <p class="text-xs text-stone-500">Upload a new image below to replace it.</p>
+                </div>
+            </div>
+            {{end}}
+            <input type="hidden" name="existing_image_path" value="{{.Bill.ImagePath}}">
+            <input type="file" name="bill_image" accept=".jpg,.jpeg,.png,.webp"
+                   class="block w-full text-sm text-stone-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-stone-100 file:text-stone-700 hover:file:bg-stone-200 cursor-pointer">
+            <p class="mt-1.5 text-xs text-stone-500">PNG, JPG, WEBP up to 10MB. Leave empty to keep current image.</p>
+        </div>
+
+        <div class="flex flex-col-reverse sm:flex-row items-center gap-3 pt-6 border-t border-stone-200 mt-6">
+            <a href="/bills/{{.Bill.ID}}" class="w-full sm:w-auto inline-flex items-center justify-center rounded-lg px-6 py-2.5 text-sm font-semibold text-stone-700 hover:text-stone-900 hover:bg-white transition-colors">
+                Cancel
+            </a>
+            <button type="submit" class="w-full sm:w-auto sm:ml-auto inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-all active:scale-95">
+                <i data-lucide="save" class="w-4 h-4"></i>
+                Update Bill
+            </button>
+        </div>
+    </form>
+</div>
+{{end}}
+
+{{template "layout" .}}

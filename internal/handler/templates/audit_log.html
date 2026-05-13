@@ -1,0 +1,115 @@
+{{define "content"}}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold tracking-tight text-stone-900 flex items-center gap-2">
+        <i data-lucide="scroll-text" class="w-6 h-6 text-primary"></i>
+        Audit Log
+    </h1>
+    <p class="text-sm text-stone-600 mt-1">Track all changes made in your organization</p>
+</div>
+
+<!-- Filter Bar -->
+<form method="GET" action="/audit-log" class="flex flex-col sm:flex-row gap-3 mb-4">
+    <select name="entity_type" onchange="this.form.submit()"
+            class="rounded-lg border-0 py-2 px-3 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary text-sm appearance-none cursor-pointer">
+        <option value="">All Types</option>
+        <option value="ingredient" {{if eq .FilterEntityType "ingredient"}}selected{{end}}>Ingredients</option>
+        <option value="vendor" {{if eq .FilterEntityType "vendor"}}selected{{end}}>Vendors</option>
+        <option value="bill" {{if eq .FilterEntityType "bill"}}selected{{end}}>Bills</option>
+        <option value="recipe" {{if eq .FilterEntityType "recipe"}}selected{{end}}>Recipes</option>
+        <option value="sale_entry" {{if eq .FilterEntityType "sale_entry"}}selected{{end}}>Sales</option>
+        <option value="wastage" {{if eq .FilterEntityType "wastage"}}selected{{end}}>Wastage</option>
+        <option value="user" {{if eq .FilterEntityType "user"}}selected{{end}}>Users</option>
+    </select>
+    <select name="action" onchange="this.form.submit()"
+            class="rounded-lg border-0 py-2 px-3 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary text-sm appearance-none cursor-pointer">
+        <option value="">All Actions</option>
+        <option value="create" {{if eq .FilterAction "create"}}selected{{end}}>Create</option>
+        <option value="update" {{if eq .FilterAction "update"}}selected{{end}}>Update</option>
+        <option value="delete" {{if eq .FilterAction "delete"}}selected{{end}}>Delete</option>
+    </select>
+</form>
+
+{{if not .Entries}}
+<div class="text-center py-16 px-4 bg-surface border border-stone-200 rounded-2xl shadow-sm">
+    <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 text-stone-600">
+        <i data-lucide="scroll-text" class="w-8 h-8"></i>
+    </div>
+    <h3 class="text-lg font-medium text-stone-900 mb-2">No audit entries</h3>
+    <p class="text-stone-600 max-w-sm mx-auto">Changes will appear here as your team creates, updates, and deletes records.</p>
+</div>
+{{else}}
+<div class="bg-surface border border-stone-200 rounded-2xl shadow-sm overflow-hidden p-0">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-stone-700">
+            <thead class="text-xs uppercase bg-stone-100 text-stone-600 font-semibold border-b border-stone-200">
+                <tr>
+                    <th scope="col" class="px-6 py-4">Time</th>
+                    <th scope="col" class="px-6 py-4">User</th>
+                    <th scope="col" class="px-6 py-4">Action</th>
+                    <th scope="col" class="px-6 py-4">Resource</th>
+                    <th scope="col" class="px-6 py-4 hidden md:table-cell">Details</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-stone-100">
+                {{range .Entries}}
+                <tr class="hover:bg-stone-50 transition-colors">
+                    <td class="px-6 py-4 whitespace-nowrap text-xs text-stone-500">
+                        {{.CreatedAt.Format "Jan 2, 15:04"}}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="font-medium text-stone-900 text-xs">{{.UserName}}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        {{if eq .Action "create"}}
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">
+                            <i data-lucide="plus" class="w-3 h-3"></i> Created
+                        </span>
+                        {{else if eq .Action "update"}}
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">
+                            <i data-lucide="edit-2" class="w-3 h-3"></i> Updated
+                        </span>
+                        {{else if eq .Action "delete"}}
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">
+                            <i data-lucide="trash-2" class="w-3 h-3"></i> Deleted
+                        </span>
+                        {{end}}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="text-xs font-medium text-stone-700 capitalize">{{.EntityType}}</span>
+                    </td>
+                    <td class="px-6 py-4 hidden md:table-cell">
+                        <span class="text-xs text-stone-500 font-mono">{{printf "%.8s" .EntityID.String}}...</span>
+                        {{if .IPAddress}}
+                        <span class="text-xs text-stone-400 ml-2">from {{.IPAddress}}</span>
+                        {{end}}
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+
+    {{if gt .TotalPages 1}}
+    <div class="flex items-center justify-between px-6 py-4 border-t border-stone-200">
+        <span class="text-xs text-stone-500">Page {{.CurrentPage}} of {{.TotalPages}} ({{.TotalEntries}} entries)</span>
+        <div class="flex gap-2">
+            {{if gt .CurrentPage 1}}
+            <a href="/audit-log?page={{subtract .CurrentPage 1}}{{if .FilterEntityType}}&entity_type={{.FilterEntityType}}{{end}}{{if .FilterAction}}&action={{.FilterAction}}{{end}}"
+               class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium bg-white text-stone-700 border border-stone-200 hover:bg-stone-50">
+                <i data-lucide="chevron-left" class="w-3 h-3"></i> Prev
+            </a>
+            {{end}}
+            {{if lt .CurrentPage .TotalPages}}
+            <a href="/audit-log?page={{add .CurrentPage 1}}{{if .FilterEntityType}}&entity_type={{.FilterEntityType}}{{end}}{{if .FilterAction}}&action={{.FilterAction}}{{end}}"
+               class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium bg-white text-stone-700 border border-stone-200 hover:bg-stone-50">
+                Next <i data-lucide="chevron-right" class="w-3 h-3"></i>
+            </a>
+            {{end}}
+        </div>
+    </div>
+    {{end}}
+</div>
+{{end}}
+{{end}}
+
+{{template "layout" .}}
