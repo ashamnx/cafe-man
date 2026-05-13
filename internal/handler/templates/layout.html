@@ -317,9 +317,21 @@
             Alpine.data('ingredientsList', () => ({
                 query: '',
                 sortOpen: false,
+                noMatch: false,
                 init() {
                     var url = new URL(window.location.href);
                     this.query = url.searchParams.get('search') || '';
+                    this.$watch('query', () => this.recalcMatches());
+                    this.recalcMatches();
+                },
+                recalcMatches() {
+                    var q = this.query.trim().toLowerCase();
+                    if (q === '') { this.noMatch = false; return; }
+                    var rows = this.$el.querySelectorAll('[data-name]');
+                    for (var i = 0; i < rows.length; i++) {
+                        if ((rows[i].dataset.name || '').includes(q)) { this.noMatch = false; return; }
+                    }
+                    this.noMatch = rows.length > 0;
                 },
                 toggleSort() { this.sortOpen = !this.sortOpen; },
                 closeSort() { this.sortOpen = false; },
@@ -336,15 +348,6 @@
                     var q = this.query.trim().toLowerCase();
                     if (q === '') return true;
                     return (el.dataset.name || '').includes(q);
-                },
-                noMatches() {
-                    var q = this.query.trim().toLowerCase();
-                    if (q === '') return false;
-                    var rows = this.$el.querySelectorAll('[data-name]');
-                    for (var i = 0; i < rows.length; i++) {
-                        if ((rows[i].dataset.name || '').includes(q)) return false;
-                    }
-                    return rows.length > 0;
                 }
             }));
         });

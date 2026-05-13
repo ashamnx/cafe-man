@@ -49,6 +49,7 @@ func RunTenant(ctx context.Context, pool *pgxpool.Pool) error {
 		{"tenant/000009_recipe_ingredient_display_unit.up.sql", 9},
 		{"tenant/000010_utility_costs_v2.up.sql", 10},
 		{"tenant/000011_menu_items_yield.up.sql", 11},
+		{"tenant/000012_ingredient_purchase_defaults.up.sql", 12},
 	}
 	for _, m := range migrations {
 		if err := runSQL(ctx, pool, tenantFS, m.path, m.version); err != nil {

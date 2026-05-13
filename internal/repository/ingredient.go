@@ -21,21 +21,39 @@ func NewIngredientRepo(pool *pgxpool.Pool) *IngredientRepo {
 }
 
 func (r *IngredientRepo) List(ctx context.Context, search string, categoryID *uuid.UUID, sortBy, stockFilter string) ([]model.Ingredient, error) {
+	// bi: latest mapped bill item for the ingredient (most-recent purchase).
+	// pu: unit row for the ingredient's saved initial purchase_unit_id.
+	// COALESCE picks the bill value first, falling back to the persisted
+	// initial purchase defaults on the ingredient row.
 	query := `SELECT i.id, i.name, COALESCE(i.description,''), COALESCE(i.image_path,''), i.unit_id,
 	                 i.current_stock, i.current_cost_per_unit,
 	                 i.low_stock_threshold, i.price_alert_percentage,
 	                 i.category_id, i.is_active, i.created_at, i.updated_at,
 	                 u.id, u.name, u.abbreviation, u.unit_type,
 	                 COALESCE(c.name, ''),
-	                 ph.last_price_at
+	                 ph.last_price_at,
+	                 COALESCE(bi.raw_quantity, i.purchase_qty)             AS bulk_qty,
+	                 COALESCE(bi.raw_unit, pu.abbreviation, '')            AS bulk_unit,
+	                 COALESCE(bi.raw_total_price, i.purchase_price)        AS bulk_total
 	          FROM ingredients i
 	          JOIN units u ON u.id = i.unit_id
 	          LEFT JOIN ingredient_categories c ON c.id = i.category_id
+	          LEFT JOIN units pu ON pu.id = i.purchase_unit_id
 	          LEFT JOIN (
 	              SELECT ingredient_id, MAX(recorded_at) AS last_price_at
 	              FROM ingredient_price_history
 	              GROUP BY ingredient_id
 	          ) ph ON ph.ingredient_id = i.id
+	          LEFT JOIN LATERAL (
+	              SELECT raw_quantity, raw_unit, raw_total_price
+	              FROM vendor_bill_items
+	              WHERE ingredient_id = i.id
+	                AND mapping_status IN ('auto_mapped', 'manually_mapped')
+	                AND raw_quantity IS NOT NULL
+	                AND raw_total_price IS NOT NULL
+	              ORDER BY mapped_at DESC NULLS LAST, created_at DESC
+	              LIMIT 1
+	          ) bi ON true
 	          WHERE i.is_active = true`
 	var args []any
 	argN := 1
@@ -86,6 +104,7 @@ func (r *IngredientRepo) List(ctx context.Context, search string, categoryID *uu
 			&unit.ID, &unit.Name, &unit.Abbreviation, &unit.UnitType,
 			&catName,
 			&ing.LastPriceAt,
+			&ing.BulkQty, &ing.BulkUnitAbbr, &ing.BulkTotal,
 		); err != nil {
 			return nil, err
 		}
@@ -185,6 +204,7 @@ func (r *IngredientRepo) GetByID(ctx context.Context, id uuid.UUID) (*model.Ingr
 		        i.current_stock, i.current_cost_per_unit,
 		        i.low_stock_threshold, i.price_alert_percentage,
 		        i.category_id, i.is_active, i.created_at, i.updated_at,
+		        i.purchase_qty, i.purchase_unit_id, i.purchase_price,
 		        u.id, u.name, u.abbreviation, u.unit_type,
 		        COALESCE(c.name, '')
 		 FROM ingredients i
@@ -196,6 +216,7 @@ func (r *IngredientRepo) GetByID(ctx context.Context, id uuid.UUID) (*model.Ingr
 		&ing.CurrentStock, &ing.CurrentCostPerUnit,
 		&ing.LowStockThreshold, &ing.PriceAlertPercentage,
 		&ing.CategoryID, &ing.IsActive, &ing.CreatedAt, &ing.UpdatedAt,
+		&ing.PurchaseQty, &ing.PurchaseUnitID, &ing.PurchasePrice,
 		&unit.ID, &unit.Name, &unit.Abbreviation, &unit.UnitType,
 		&catName,
 	)
@@ -222,17 +243,22 @@ type CreateIngredientParams struct {
 	LowStockThreshold    *float64
 	PriceAlertPercentage float64
 	CategoryID           *uuid.UUID
+	PurchaseQty          *float64
+	PurchaseUnitID       *uuid.UUID
+	PurchasePrice        *float64
 }
 
 func (r *IngredientRepo) Create(ctx context.Context, p CreateIngredientParams) (*model.Ingredient, error) {
 	var id uuid.UUID
 	err := r.pool.QueryRow(ctx,
 		`INSERT INTO ingredients (name, description, image_path, unit_id, current_stock, current_cost_per_unit,
-		                          low_stock_threshold, price_alert_percentage, category_id)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		                          low_stock_threshold, price_alert_percentage, category_id,
+		                          purchase_qty, purchase_unit_id, purchase_price)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		 RETURNING id`,
 		p.Name, p.Description, p.ImagePath, p.UnitID, p.CurrentStock, p.CurrentCostPerUnit,
 		p.LowStockThreshold, p.PriceAlertPercentage, p.CategoryID,
+		p.PurchaseQty, p.PurchaseUnitID, p.PurchasePrice,
 	).Scan(&id)
 	if err != nil {
 		return nil, err
@@ -243,9 +269,15 @@ func (r *IngredientRepo) Create(ctx context.Context, p CreateIngredientParams) (
 func (r *IngredientRepo) Update(ctx context.Context, id uuid.UUID, p CreateIngredientParams) error {
 	_, err := r.pool.Exec(ctx,
 		`UPDATE ingredients SET name=$1, description=$2, image_path=$3, unit_id=$4,
-		 low_stock_threshold=$5, price_alert_percentage=$6, category_id=$7, updated_at=NOW()
-		 WHERE id=$8`,
-		p.Name, p.Description, p.ImagePath, p.UnitID, p.LowStockThreshold, p.PriceAlertPercentage, p.CategoryID, id,
+		 low_stock_threshold=$5, price_alert_percentage=$6, category_id=$7,
+		 purchase_qty=COALESCE($8, purchase_qty),
+		 purchase_unit_id=COALESCE($9, purchase_unit_id),
+		 purchase_price=COALESCE($10, purchase_price),
+		 updated_at=NOW()
+		 WHERE id=$11`,
+		p.Name, p.Description, p.ImagePath, p.UnitID, p.LowStockThreshold, p.PriceAlertPercentage, p.CategoryID,
+		p.PurchaseQty, p.PurchaseUnitID, p.PurchasePrice,
+		id,
 	)
 	return err
 }

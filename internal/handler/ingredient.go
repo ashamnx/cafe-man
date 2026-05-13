@@ -175,7 +175,8 @@ func (h *IngredientHandler) create(w http.ResponseWriter, r *http.Request) {
 		params.PriceAlertPercentage = 10.0
 	}
 
-	// Purchase calculator: compute cost_per_unit from purchase fields.
+	// Purchase calculator: compute cost_per_unit from purchase fields, and
+	// persist the bulk values themselves as defaults for the ingredients list.
 	if pQty := parseFloat(r.FormValue("purchase_qty")); pQty > 0 {
 		pPrice := parseFloat(r.FormValue("purchase_price"))
 		pUnitIDStr := r.FormValue("purchase_unit_id")
@@ -188,6 +189,9 @@ func (h *IngredientHandler) create(w http.ResponseWriter, r *http.Request) {
 						params.CurrentCostPerUnit = cost
 					}
 				}
+				params.PurchaseQty = &pQty
+				params.PurchaseUnitID = &pUnitID
+				params.PurchasePrice = &pPrice
 			}
 		}
 	}
@@ -355,6 +359,19 @@ func (h *IngredientHandler) update(w http.ResponseWriter, r *http.Request) {
 	if threshold := r.FormValue("low_stock_threshold"); threshold != "" {
 		v := parseFloat(threshold)
 		params.LowStockThreshold = &v
+	}
+
+	// Persist the bulk purchase defaults if re-entered. The Update SQL uses
+	// COALESCE so a missing/zero value here leaves the existing row untouched.
+	if pQty := parseFloat(r.FormValue("purchase_qty")); pQty > 0 {
+		pPrice := parseFloat(r.FormValue("purchase_price"))
+		if pUnitIDStr := r.FormValue("purchase_unit_id"); pPrice > 0 && pUnitIDStr != "" {
+			if pUnitID, err := uuid.Parse(pUnitIDStr); err == nil {
+				params.PurchaseQty = &pQty
+				params.PurchaseUnitID = &pUnitID
+				params.PurchasePrice = &pPrice
+			}
+		}
 	}
 
 	oldIngredient, _ := repo.GetByID(r.Context(), id)

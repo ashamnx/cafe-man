@@ -37,55 +37,65 @@
 {{$activeSort := index .Filters "sort"}}
 {{$lowActive := eq (index .Filters "stock") "low"}}
 
-<!-- Filter Bar -->
-<form method="GET" action="/ingredients" x-ref="filterForm" class="flex flex-row items-center gap-2 mb-4">
-    <!-- Search: client-side live filter via Alpine. name=search preserves URL state when other filters submit. -->
-    <div class="relative flex-grow min-w-0">
-        <i data-lucide="search" class="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
-        <input type="text" name="search" x-model="query" placeholder="Search ingredients..."
-               class="block w-full rounded-lg border-0 py-2 pl-9 pr-3 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary text-sm">
-    </div>
+<!-- Filter Bar: row 1 (search + sort) | row 2 (stock + category) on mobile; single row on desktop. -->
+<form method="GET" action="/ingredients" x-ref="filterForm" class="flex flex-col gap-2 sm:flex-row sm:items-center mb-4">
+    <!-- Row 1: search + sort -->
+    <div class="flex items-center gap-2 flex-grow">
+        <!-- Search: client-side live filter via Alpine. name=search preserves URL state when other filters submit. -->
+        <div class="relative flex-grow min-w-0">
+            <i data-lucide="search" class="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+            <input type="text" name="search" x-model="query" placeholder="Search ingredients..."
+                   class="block w-full rounded-lg border-0 py-2 pl-9 pr-3 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary text-sm">
+        </div>
 
-    <!-- Sort: icon button + popover. Hidden sort field carries current value for cross-filter submits. -->
-    <input type="hidden" name="sort" x-ref="sortField" value="{{$activeSort}}">
-    <div class="relative shrink-0" @click.away="closeSort">
-        <button type="button" @click="toggleSort"
-                class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-white text-stone-700 shadow-sm ring-1 ring-inset ring-stone-200 hover:bg-stone-50"
-                title="Sort">
-            <i data-lucide="arrow-up-down" class="w-4 h-4"></i>
-        </button>
-        <div x-show="sortOpen" x-cloak x-transition.opacity
-             class="absolute right-0 mt-2 w-44 rounded-lg bg-white shadow-lg ring-1 ring-stone-200 z-20 py-1">
-            <button type="button" @click="selectSort('name')"
-                    class="w-full text-left px-3 py-2 text-sm hover:bg-stone-50 {{if or (eq $activeSort "name") (eq $activeSort "")}}text-primary font-semibold{{else}}text-stone-700{{end}}">Name</button>
-            <button type="button" @click="selectSort('cost_asc')"
-                    class="w-full text-left px-3 py-2 text-sm hover:bg-stone-50 {{if eq $activeSort "cost_asc"}}text-primary font-semibold{{else}}text-stone-700{{end}}">Cost (Low to High)</button>
-            <button type="button" @click="selectSort('cost_desc')"
-                    class="w-full text-left px-3 py-2 text-sm hover:bg-stone-50 {{if eq $activeSort "cost_desc"}}text-primary font-semibold{{else}}text-stone-700{{end}}">Cost (High to Low)</button>
-            <button type="button" @click="selectSort('stock_asc')"
-                    class="w-full text-left px-3 py-2 text-sm hover:bg-stone-50 {{if eq $activeSort "stock_asc"}}text-primary font-semibold{{else}}text-stone-700{{end}}">Stock (Low to High)</button>
-            <button type="button" @click="selectSort('stock_desc')"
-                    class="w-full text-left px-3 py-2 text-sm hover:bg-stone-50 {{if eq $activeSort "stock_desc"}}text-primary font-semibold{{else}}text-stone-700{{end}}">Stock (High to Low)</button>
+        <!-- Sort: icon button + popover. Hidden sort field carries current value for cross-filter submits. -->
+        <input type="hidden" name="sort" x-ref="sortField" value="{{$activeSort}}">
+        <div class="relative shrink-0" @click.away="closeSort">
+            <button type="button" @click="toggleSort"
+                    class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-white text-stone-700 shadow-sm ring-1 ring-inset ring-stone-200 hover:bg-stone-50"
+                    title="Sort">
+                <i data-lucide="arrow-up-down" class="w-4 h-4"></i>
+            </button>
+            <div x-show="sortOpen" x-cloak x-transition.opacity
+                 class="absolute right-0 mt-2 w-52 rounded-lg bg-white shadow-lg ring-1 ring-stone-200 z-20 py-1">
+                <button type="button" @click="selectSort('name')"
+                        class="w-full text-left px-3 py-2 text-sm whitespace-nowrap hover:bg-stone-50 {{if or (eq $activeSort "name") (eq $activeSort "")}}text-primary font-semibold{{else}}text-stone-700{{end}}">Name</button>
+                <button type="button" @click="selectSort('cost_asc')"
+                        class="w-full text-left px-3 py-2 text-sm whitespace-nowrap hover:bg-stone-50 {{if eq $activeSort "cost_asc"}}text-primary font-semibold{{else}}text-stone-700{{end}}">Cost (Low to High)</button>
+                <button type="button" @click="selectSort('cost_desc')"
+                        class="w-full text-left px-3 py-2 text-sm whitespace-nowrap hover:bg-stone-50 {{if eq $activeSort "cost_desc"}}text-primary font-semibold{{else}}text-stone-700{{end}}">Cost (High to Low)</button>
+                <button type="button" @click="selectSort('stock_asc')"
+                        class="w-full text-left px-3 py-2 text-sm whitespace-nowrap hover:bg-stone-50 {{if eq $activeSort "stock_asc"}}text-primary font-semibold{{else}}text-stone-700{{end}}">Stock (Low to High)</button>
+                <button type="button" @click="selectSort('stock_desc')"
+                        class="w-full text-left px-3 py-2 text-sm whitespace-nowrap hover:bg-stone-50 {{if eq $activeSort "stock_desc"}}text-primary font-semibold{{else}}text-stone-700{{end}}">Stock (High to Low)</button>
+            </div>
         </div>
     </div>
 
-    <!-- Stock: chip toggle. Hidden input holds current value; button flips it and submits. -->
-    <input type="hidden" name="stock" x-ref="stockField" value="{{index .Filters "stock"}}">
-    <button type="button" @click="toggleStock"
-            class="inline-flex items-center gap-1 h-10 px-3 rounded-lg text-sm font-medium shadow-sm ring-1 ring-inset whitespace-nowrap shrink-0 {{if $lowActive}}bg-red-500/10 text-red-600 ring-red-500/30{{else}}bg-white text-stone-700 ring-stone-200 hover:bg-stone-50{{end}}"
-            title="{{if $lowActive}}Showing low stock only — tap to clear{{else}}Show only low stock{{end}}">
-        <i data-lucide="package" class="w-4 h-4"></i>
-        <span>Low</span>
-    </button>
+    <!-- Row 2: stock + category -->
+    <div class="flex items-center gap-2">
+        {{$catActive := ne (index .Filters "category_id") ""}}
+        <!-- Stock: chip toggle. Hidden input holds current value; button flips it and submits. -->
+        <input type="hidden" name="stock" x-ref="stockField" value="{{index .Filters "stock"}}">
+        <button type="button" @click="toggleStock"
+                class="inline-flex items-center justify-center gap-1.5 h-10 px-4 rounded-lg text-sm font-medium shadow-sm ring-1 ring-inset whitespace-nowrap flex-1 sm:flex-none {{if $lowActive}}bg-red-500/10 text-red-600 ring-red-500/30{{else}}bg-white text-stone-700 ring-stone-200 hover:bg-stone-50{{end}}"
+                title="{{if $lowActive}}Showing low stock only — tap to clear{{else}}Show only low stock{{end}}">
+            <i data-lucide="package" class="w-4 h-4"></i>
+            <span>Low stock</span>
+        </button>
 
-    <!-- Category: standard select, auto-submits -->
-    <select name="category_id" onchange="this.form.submit()"
-            class="rounded-lg border-0 h-10 pl-3 pr-8 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary text-sm appearance-none cursor-pointer max-w-[40vw] sm:max-w-none truncate shrink-0">
-        <option value="">All Categories</option>
-        {{range .IngredientCategories}}
-        <option value="{{.ID}}" {{if eq (index $.Filters "category_id") .ID.String}}selected{{end}}>{{.Name}} ({{index $.CategoryCounts .ID}})</option>
-        {{end}}
-    </select>
+        <!-- Category: native select with a custom chevron overlay so it reads as a dropdown. -->
+        <div class="relative flex-1 sm:flex-none">
+            <i data-lucide="chevron-down" class="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-stone-500"></i>
+            <select name="category_id" onchange="this.form.submit()"
+                    class="block w-full rounded-lg border-0 h-10 pl-3 pr-9 bg-white {{if $catActive}}text-primary font-medium{{else}}text-stone-700{{end}} shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary text-sm appearance-none cursor-pointer truncate">
+                <option value="">All Categories</option>
+                {{range .IngredientCategories}}
+                <option value="{{.ID}}" {{if eq (index $.Filters "category_id") .ID.String}}selected{{end}}>{{.Name}} ({{index $.CategoryCounts .ID}})</option>
+                {{end}}
+            </select>
+        </div>
+    </div>
 </form>
 
 {{if not .Ingredients}}
@@ -133,11 +143,12 @@
                             </a>
                             {{end}}
                         </div>
-                        <div class="sm:hidden flex items-center flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs">
+                        <div class="sm:hidden mt-1 text-xs text-stone-600">
                             <span class="{{if and .LowStockThreshold (lt .CurrentStock (deref .LowStockThreshold))}}text-red-400 font-semibold{{else}}text-stone-600{{end}}">{{money .CurrentStock}} {{if .Unit}}{{.Unit.Abbreviation}}{{end}}</span>
-                            <span class="text-stone-400">&middot;</span>
-                            <span class="text-stone-600 font-mono">MVR {{money .CurrentCostPerUnit}}/{{if .Unit}}{{.Unit.Abbreviation}}{{end}}</span>
-                            {{if .LastPriceAt}}<span class="text-stone-400 text-[10px]">{{timeAgo .LastPriceAt}}</span>{{end}}
+                            <span class="text-stone-300 mx-1.5">&middot;</span>
+                            <span class="font-mono">MVR {{money .CurrentCostPerUnit}}/{{if .Unit}}{{.Unit.Abbreviation}}{{end}}</span>
+                            {{if .BulkTotal}}<span class="text-stone-300 mx-1.5">&middot;</span><span class="font-mono text-stone-500">{{money (deref .BulkTotal)}}/{{money (deref .BulkQty)}}{{.BulkUnitAbbr}}</span>{{end}}
+                            {{if .LastPriceAt}}<span class="text-stone-300 mx-1.5">&middot;</span><span class="text-stone-400">{{timeAgo .LastPriceAt}}</span>{{end}}
                         </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-stone-600 hidden sm:table-cell">
@@ -151,6 +162,7 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
                         <div class="text-stone-700">{{money .CurrentCostPerUnit}}</div>
+                        {{if .BulkTotal}}<div class="text-[11px] text-stone-500 font-mono mt-0.5">{{money (deref .BulkTotal)}}/{{money (deref .BulkQty)}}{{.BulkUnitAbbr}}</div>{{end}}
                         {{if .LastPriceAt}}<div class="text-[10px] text-stone-400 mt-0.5">{{timeAgo .LastPriceAt}}</div>{{end}}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap hidden md:table-cell">
@@ -182,7 +194,7 @@
 </div>
 
 <!-- Client-side "no matches" state when search filters out all rows -->
-<div x-show="noMatches()" x-cloak class="text-center py-12 px-4 mt-4 bg-surface border border-stone-200 rounded-2xl shadow-sm">
+<div x-show="noMatch" x-cloak class="text-center py-12 px-4 mt-4 bg-surface border border-stone-200 rounded-2xl shadow-sm">
     <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 text-stone-600">
         <i data-lucide="search-x" class="w-6 h-6"></i>
     </div>

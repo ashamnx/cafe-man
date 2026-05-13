@@ -39,10 +39,22 @@ type Ingredient struct {
 	CreatedAt            time.Time  `json:"created_at"`
 	UpdatedAt            time.Time  `json:"updated_at"`
 
+	// Persisted bulk-purchase defaults (entered via the purchase calculator).
+	// Used as fallback when no mapped vendor_bill_items row exists.
+	PurchaseQty     *float64   `json:"purchase_qty,omitempty"`
+	PurchaseUnitID  *uuid.UUID `json:"purchase_unit_id,omitempty"`
+	PurchasePrice   *float64   `json:"purchase_price,omitempty"`
+
 	// Joined fields
 	Unit        *Unit               `json:"unit,omitempty"`
 	Category    *IngredientCategory `json:"category,omitempty"`
 	LastPriceAt *time.Time          `json:"last_price_at,omitempty"`
+
+	// Effective bulk price for list display: either the latest mapped vendor
+	// bill item, or the saved purchase defaults above. Populated only by List.
+	BulkQty       *float64 `json:"bulk_qty,omitempty"`
+	BulkUnitAbbr  string   `json:"bulk_unit_abbr,omitempty"`
+	BulkTotal     *float64 `json:"bulk_total,omitempty"`
 }
 
 type IngredientPriceHistory struct {
