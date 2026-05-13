@@ -44,14 +44,54 @@
 </div>
 {{end}}
 
+{{if and (not .Bill.Vendor) .AIExtraction.VendorName}}
+<div class="bg-purple-50 border border-purple-200 rounded-2xl p-6 shadow-sm mb-6">
+    <div class="flex items-start gap-4">
+        <div class="p-2 bg-purple-500/10 rounded-lg text-purple-600 shrink-0">
+            <i data-lucide="sparkles" class="w-5 h-5"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+            <h3 class="text-sm font-semibold text-stone-900">AI detected vendor</h3>
+            <p class="text-lg font-bold text-stone-900 mt-1 truncate">&ldquo;{{.AIExtraction.VendorName}}&rdquo;</p>
+            {{if or .AIExtraction.VendorPhone .AIExtraction.VendorAddress}}
+            <p class="text-xs text-stone-600 mt-1 space-x-2">
+                {{if .AIExtraction.VendorPhone}}<span class="inline-flex items-center gap-1"><i data-lucide="phone" class="w-3 h-3"></i>{{.AIExtraction.VendorPhone}}</span>{{end}}
+                {{if .AIExtraction.VendorAddress}}<span class="inline-flex items-center gap-1"><i data-lucide="map-pin" class="w-3 h-3"></i>{{.AIExtraction.VendorAddress}}</span>{{end}}
+            </p>
+            {{end}}
+            <p class="text-sm text-stone-700 mt-3">Not in your vendors yet.</p>
+            <div class="flex flex-wrap gap-2 mt-3">
+                <button type="button"
+                        hx-post="/bills/{{.Bill.ID}}/create-vendor"
+                        hx-confirm="Create vendor &ldquo;{{.AIExtraction.VendorName}}&rdquo;?"
+                        class="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-700 transition-colors active:scale-[0.98]">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Create vendor
+                </button>
+                <a href="/bills/{{.Bill.ID}}/edit"
+                   class="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-stone-700 border border-stone-200 hover:bg-stone-50 transition-colors">
+                    <i data-lucide="search" class="w-4 h-4"></i> Pick existing
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}
+
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
     <div class="bg-surface border border-stone-200 rounded-2xl p-6 shadow-sm flex items-center gap-4">
         <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center text-stone-600 border border-stone-200">
             <i data-lucide="building-2" class="w-5 h-5"></i>
         </div>
-        <div>
+        <div class="min-w-0 flex-1">
             <div class="text-sm font-medium text-stone-500 mb-0.5">Vendor</div>
-            <div class="text-lg font-bold text-stone-900">{{if .Bill.Vendor}}{{.Bill.Vendor.Name}}{{else}}<span class="italic text-stone-500 text-base font-normal">Unassigned</span>{{end}}</div>
+            <div class="text-lg font-bold text-stone-900 truncate">{{if .Bill.Vendor}}{{.Bill.Vendor.Name}}{{else}}<span class="italic text-stone-500 text-base font-normal">Unassigned</span>{{end}}</div>
+            {{if .VendorAutoMatched}}
+            <div class="text-xs text-purple-600 flex items-center gap-1 mt-1">
+                <i data-lucide="sparkles" class="w-3 h-3"></i>
+                <span>Auto-matched by AI</span>
+                <a href="/bills/{{.Bill.ID}}/edit" class="underline ml-1 hover:text-purple-700">Change</a>
+            </div>
+            {{end}}
         </div>
     </div>
     <div class="bg-surface border border-stone-200 rounded-2xl p-6 shadow-sm flex items-center gap-4">

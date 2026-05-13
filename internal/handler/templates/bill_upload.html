@@ -6,13 +6,91 @@
         </a>
         <div>
             <h1 class="text-2xl font-bold tracking-tight text-stone-900">Add Vendor Bill</h1>
-            <p class="text-sm text-stone-600 mt-1">Enter bill details manually and optionally attach a bill image</p>
+            <p class="text-sm text-stone-600 mt-1">Upload a bill image — AI extracts the vendor, items, and totals automatically.</p>
         </div>
     </div>
 </div>
 
-<div class="max-w-4xl">
-    <div class="bg-surface border border-stone-200 rounded-2xl shadow-sm p-6 sm:p-8">
+<div class="max-w-4xl" x-data="{ showManual: false }" x-cloak>
+    <!-- Hero: AI Bill Scanner -->
+    <div x-show="!showManual" class="bg-gradient-to-br from-purple-50 to-white border border-purple-200 rounded-2xl shadow-sm p-6 sm:p-8">
+        <div class="flex items-center gap-3 mb-6">
+            <div class="p-3 bg-purple-500/10 rounded-xl text-purple-600">
+                <i data-lucide="sparkles" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h2 class="text-xl font-bold text-stone-900">AI Bill Scanner</h2>
+                <p class="text-sm text-stone-600">Drop in a photo of your bill — we'll detect the vendor and every line item.</p>
+            </div>
+        </div>
+
+        <form method="POST" action="/bills/upload" enctype="multipart/form-data" class="space-y-5">
+            <!-- Drag-and-drop file zone -->
+            <div>
+                <div class="flex justify-center rounded-xl border-2 border-dashed border-purple-300 bg-white px-6 py-10 hover:bg-purple-50 transition-colors group cursor-pointer relative" onclick="document.getElementById('ai_bill_image').click()">
+                    <div class="text-center">
+                        <i data-lucide="scan-line" class="mx-auto h-12 w-12 text-purple-500 group-hover:text-purple-600 transition-colors"></i>
+                        <div class="mt-4 flex text-sm leading-6 text-stone-700 justify-center">
+                            <span class="relative cursor-pointer rounded-md font-semibold text-purple-600 hover:text-purple-700">
+                                <span>Upload a bill image</span>
+                                <input id="ai_bill_image" name="bill_image" type="file" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept=".jpg,.jpeg,.png,.webp">
+                            </span>
+                            <p class="pl-1">or drag &amp; drop</p>
+                        </div>
+                        <p class="text-xs leading-5 text-stone-500 mt-1">PNG, JPG, WEBP up to 10MB</p>
+                    </div>
+                </div>
+                <div id="ai-file-preview" class="hidden mt-3 flex items-center gap-3 p-3 bg-white rounded-lg border border-purple-200">
+                    <i data-lucide="file-image" class="w-5 h-5 text-purple-600 shrink-0"></i>
+                    <span id="ai-file-name" class="text-sm text-stone-700 truncate"></span>
+                    <button type="button" id="ai-clear-file" class="ml-auto text-stone-400 hover:text-red-500 transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
+                </div>
+            </div>
+
+            <!-- Optional pre-fill fields -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                <div>
+                    <label for="scan_vendor_id" class="block text-xs font-medium text-stone-600 mb-1">Vendor <span class="text-stone-400">(optional — AI will detect)</span></label>
+                    <select id="scan_vendor_id" name="vendor_id" class="block w-full rounded-lg border-0 py-2 px-3 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-purple-500 text-sm appearance-none cursor-pointer">
+                        <option value="">Auto-detect from bill</option>
+                        {{range .Vendors}}
+                        <option value="{{.ID}}">{{.Name}}</option>
+                        {{end}}
+                    </select>
+                </div>
+                <div>
+                    <label for="scan_bill_number" class="block text-xs font-medium text-stone-600 mb-1">Bill Number <span class="text-stone-400">(optional)</span></label>
+                    <input type="text" id="scan_bill_number" name="bill_number" class="block w-full rounded-lg border-0 py-2 px-3 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-purple-500 text-sm font-mono" placeholder="INV-001">
+                </div>
+            </div>
+
+            <button type="submit" class="w-full flex justify-center items-center gap-2 rounded-lg bg-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-purple-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-600 transition-all active:scale-[0.98]">
+                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                Scan with AI
+            </button>
+        </form>
+
+        <div class="text-center mt-5 pt-5 border-t border-purple-100">
+            <button type="button" @click="showManual = true" class="text-sm text-stone-600 hover:text-stone-900 inline-flex items-center gap-1 transition-colors">
+                <span>Prefer to enter manually?</span>
+                <i data-lucide="chevron-down" class="w-4 h-4"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Manual entry (hidden by default) -->
+    <div x-show="showManual" class="bg-surface border border-stone-200 rounded-2xl shadow-sm p-6 sm:p-8">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-lg font-semibold text-stone-900 flex items-center gap-2">
+                <i data-lucide="pencil-line" class="w-5 h-5 text-stone-600"></i>
+                Manual Entry
+            </h2>
+            <button type="button" @click="showManual = false" class="text-sm text-purple-600 hover:text-purple-700 inline-flex items-center gap-1 transition-colors">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                Back to AI Scanner
+            </button>
+        </div>
+
         <form id="bill-form" method="POST" action="/bills/manual" enctype="multipart/form-data" class="space-y-6">
 
             <!-- Bill Details -->
@@ -91,48 +169,31 @@
             </div>
         </form>
     </div>
-
-    <!-- Scan Mode (secondary) -->
-    <div class="mt-6 bg-surface border border-stone-200 rounded-2xl shadow-sm p-6 sm:p-8">
-        <div class="flex items-center gap-3 mb-4">
-            <div class="p-2 bg-purple-500/10 rounded-lg text-purple-500">
-                <i data-lucide="sparkles" class="w-5 h-5"></i>
-            </div>
-            <div>
-                <h3 class="text-sm font-semibold text-stone-900">AI Bill Scanner</h3>
-                <p class="text-xs text-stone-500 mt-0.5">Upload a bill image and let AI extract items automatically</p>
-            </div>
-        </div>
-        <form method="POST" action="/bills/upload" enctype="multipart/form-data" class="space-y-4">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label for="scan_vendor_id" class="block text-xs font-medium text-stone-600 mb-1">Vendor <span class="text-stone-400">(optional)</span></label>
-                    <select id="scan_vendor_id" name="vendor_id" class="block w-full rounded-lg border-0 py-2 px-3 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary text-sm appearance-none cursor-pointer">
-                        <option value="">Select vendor...</option>
-                        {{range .Vendors}}
-                        <option value="{{.ID}}">{{.Name}}</option>
-                        {{end}}
-                    </select>
-                </div>
-                <div>
-                    <label for="scan_bill_number" class="block text-xs font-medium text-stone-600 mb-1">Bill Number <span class="text-stone-400">(optional)</span></label>
-                    <input type="text" id="scan_bill_number" name="bill_number" class="block w-full rounded-lg border-0 py-2 px-3 bg-white text-stone-900 shadow-sm ring-1 ring-inset ring-stone-200 focus:ring-2 focus:ring-inset focus:ring-primary text-sm font-mono">
-                </div>
-            </div>
-            <div>
-                <input type="file" name="bill_image" accept=".jpg,.jpeg,.png,.webp" required class="block w-full text-sm text-stone-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-500/10 file:text-purple-600 hover:file:bg-purple-500/20 cursor-pointer">
-            </div>
-            <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-purple-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-purple-600 transition-all active:scale-[0.98]">
-                <i data-lucide="sparkles" class="w-4 h-4"></i>
-                Upload & Extract with AI
-            </button>
-        </form>
-    </div>
 </div>
 
 <script>
 (function() {
-    // File preview.
+    // AI hero file preview.
+    var aiFileInput = document.getElementById('ai_bill_image');
+    var aiFilePreview = document.getElementById('ai-file-preview');
+    var aiFileName = document.getElementById('ai-file-name');
+    var aiClearBtn = document.getElementById('ai-clear-file');
+
+    aiFileInput.addEventListener('change', function() {
+        if (aiFileInput.files.length > 0) {
+            aiFileName.textContent = aiFileInput.files[0].name;
+            aiFilePreview.classList.remove('hidden');
+        } else {
+            aiFilePreview.classList.add('hidden');
+        }
+        lucide.createIcons({nameAttr: 'data-lucide'});
+    });
+    aiClearBtn.addEventListener('click', function() {
+        aiFileInput.value = '';
+        aiFilePreview.classList.add('hidden');
+    });
+
+    // Manual form file preview.
     var fileInput = document.getElementById('bill_image');
     var filePreview = document.getElementById('file-preview');
     var fileName = document.getElementById('file-name');

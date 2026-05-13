@@ -52,11 +52,13 @@ type VendorBillItem struct {
 
 // AIBillExtraction is the structured output expected from the AI scanner.
 type AIBillExtraction struct {
-	VendorName  string              `json:"vendor_name"`
-	BillNumber  string              `json:"bill_number"`
-	BillDate    string              `json:"bill_date"`
-	TotalAmount *float64            `json:"total_amount"`
-	Items       []AIBillLineItem    `json:"items"`
+	VendorName    string           `json:"vendor_name"`
+	VendorPhone   string           `json:"vendor_phone"`
+	VendorAddress string           `json:"vendor_address"`
+	BillNumber    string           `json:"bill_number"`
+	BillDate      string           `json:"bill_date"`
+	TotalAmount   *float64         `json:"total_amount"`
+	Items         []AIBillLineItem `json:"items"`
 }
 
 type AIBillLineItem struct {
