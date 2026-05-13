@@ -210,6 +210,16 @@
                 open: false,
                 toggle() { this.open = !this.open; }
             }));
+            Alpine.data('shareLink', (path) => ({
+                copied: false,
+                url: '',
+                init() { this.url = window.location.origin + path; },
+                copy() {
+                    navigator.clipboard.writeText(this.url);
+                    this.copied = true;
+                    setTimeout(() => this.copied = false, 1500);
+                }
+            }));
             Alpine.data('tabSwitcher', () => ({
                 mode: 'manual',
                 setMode(m) { this.mode = m; }

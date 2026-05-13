@@ -3,6 +3,7 @@ package handler
 import (
 	"embed"
 	"fmt"
+	"hash/fnv"
 	"html/template"
 	"io/fs"
 	"log/slog"
@@ -11,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"searlo-cafe/internal/middleware"
 
@@ -96,6 +98,61 @@ func NewRenderer(sessions *scs.SessionManager, imageBaseURL string) *Renderer {
 			}
 			return "/images/" + objectKey[:idx] + "_thumb.webp"
 		},
+		// aspectClass cycles Tailwind aspect-ratio utilities by index so a
+		// uniform grid feels Pinterest-like without a true masonry layout.
+		"aspectClass": func(i int) string {
+			switch i % 4 {
+			case 0:
+				return "aspect-[4/5]"
+			case 1:
+				return "aspect-[4/3]"
+			case 2:
+				return "aspect-[1/1]"
+			default:
+				return "aspect-[3/4]"
+			}
+		},
+		"monogram": func(name string) string {
+			for _, r := range name {
+				if unicode.IsLetter(r) || unicode.IsDigit(r) {
+					return string(unicode.ToUpper(r))
+				}
+			}
+			return "?"
+		},
+		// monoGradient picks a deterministic warm gradient for image-less menu
+		// cards. Returns template.CSS so html/template emits the literal value
+		// into the style attribute (color hex chars are not safe URL/JS chars
+		// but are safe in CSS context).
+		"monoGradient": func(name string) template.CSS {
+			palettes := [...][2]string{
+				{"#C4846A", "#1A1814"}, // clay → ink
+				{"#8FA68A", "#1A1814"}, // sage → ink
+				{"#D9A78B", "#6B4A3A"}, // sand → cocoa
+				{"#A37B6B", "#3B2A24"}, // terracotta → plum
+				{"#E2B98E", "#8A5A3B"}, // honey → bronze
+			}
+			h := fnv.New32a()
+			_, _ = h.Write([]byte(strings.ToLower(name)))
+			p := palettes[int(h.Sum32())%len(palettes)]
+			return template.CSS("linear-gradient(135deg, " + p[0] + " 0%, " + p[1] + " 100%)")
+		},
+		// dict lets templates pass multiple named values into a sub-template,
+		// since Go's html/template has no built-in map literal.
+		"dict": func(values ...any) (map[string]any, error) {
+			if len(values)%2 != 0 {
+				return nil, fmt.Errorf("dict: odd number of args")
+			}
+			m := make(map[string]any, len(values)/2)
+			for i := 0; i < len(values); i += 2 {
+				k, ok := values[i].(string)
+				if !ok {
+					return nil, fmt.Errorf("dict: non-string key at %d", i)
+				}
+				m[k] = values[i+1]
+			}
+			return m, nil
+		},
 		"timeAgo": func(t *time.Time) string {
 			if t == nil {
 				return ""
@@ -122,6 +179,29 @@ func NewRenderer(sessions *scs.SessionManager, imageBaseURL string) *Renderer {
 		panic("failed to read layout.html: " + err.Error())
 	}
 
+	// Pre-read all shared partials (files named "_*.html") so any page can
+	// invoke their {{define}} blocks without per-page imports.
+	var partialsBuf strings.Builder
+	err = fs.WalkDir(templateFS, "templates", func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil || d.IsDir() || !strings.HasSuffix(path, ".html") {
+			return walkErr
+		}
+		if !strings.HasPrefix(filepath.Base(path), "_") {
+			return nil
+		}
+		data, readErr := templateFS.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		partialsBuf.Write(data)
+		partialsBuf.WriteByte('\n')
+		return nil
+	})
+	if err != nil {
+		panic("failed to read partials: " + err.Error())
+	}
+	partials := partialsBuf.String()
+
 	// Parse each page template by cloning the layout, so each page
 	// has its own "content" definition without conflicts.
 	pages := make(map[string]*template.Template)
@@ -131,7 +211,7 @@ func NewRenderer(sessions *scs.SessionManager, imageBaseURL string) *Renderer {
 			return walkErr
 		}
 		name := filepath.Base(path)
-		if name == "layout.html" {
+		if name == "layout.html" || strings.HasPrefix(name, "_") {
 			return nil
 		}
 
@@ -140,10 +220,15 @@ func NewRenderer(sessions *scs.SessionManager, imageBaseURL string) *Renderer {
 			return readErr
 		}
 
-		// Clone layout, then parse the page template into the clone.
+		// Clone layout, register partials, then parse the page template.
 		t, parseErr := template.New("layout.html").Funcs(funcMap).Parse(string(layoutData))
 		if parseErr != nil {
 			return fmt.Errorf("parse layout for %s: %w", name, parseErr)
+		}
+		if partials != "" {
+			if _, parseErr = t.Parse(partials); parseErr != nil {
+				return fmt.Errorf("parse partials for %s: %w", name, parseErr)
+			}
 		}
 		_, parseErr = t.New(name).Parse(string(data))
 		if parseErr != nil {
@@ -168,9 +253,11 @@ func (ren *Renderer) HTML(w http.ResponseWriter, r *http.Request, name string, d
 	}
 
 	pageData := map[string]any{
-		"UserName":   ren.sessions.GetString(r.Context(), "user_name"),
-		"OrgName":    ren.sessions.GetString(r.Context(), "org_name"),
-		"OrgLogoKey": ren.sessions.GetString(r.Context(), "org_logo_key"),
+		"UserName":          ren.sessions.GetString(r.Context(), "user_name"),
+		"OrgName":           ren.sessions.GetString(r.Context(), "org_name"),
+		"OrgLogoKey":        ren.sessions.GetString(r.Context(), "org_logo_key"),
+		"OrgSlug":           ren.sessions.GetString(r.Context(), "org_slug"),
+		"OrgCurrencySymbol": ren.sessions.GetString(r.Context(), "org_currency_symbol"),
 	}
 
 	if m, ok := data.(map[string]any); ok {

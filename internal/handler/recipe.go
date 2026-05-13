@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -167,25 +168,22 @@ func (h *RecipeHandler) list(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-type menuPreviewGroup struct {
+type MenuPreviewGroup struct {
 	Name  string
 	Items []model.MenuItem
 }
 
-func (h *RecipeHandler) preview(w http.ResponseWriter, r *http.Request) {
-	pool := middleware.TenantPool(r.Context())
-	repo := repository.NewRecipeRepo(pool)
-
-	items, err := repo.ListRecipes(r.Context(), "", "", "active", "", nil)
+// GroupActiveMenu fetches active recipes grouped by category, preserving the
+// ListCategories sort order. Used by both the authenticated preview and the
+// public menu so the customer-facing ordering matches what staff see.
+func GroupActiveMenu(ctx context.Context, repo *repository.RecipeRepo) ([]MenuPreviewGroup, error) {
+	items, err := repo.ListRecipes(ctx, "", "", "active", "", nil)
 	if err != nil {
-		slog.Error("preview: list recipes", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 
-	categories, _ := repo.ListCategories(r.Context())
+	categories, _ := repo.ListCategories(ctx)
 
-	// Group items by category, preserving the sort_order from ListCategories.
 	grouped := make(map[uuid.UUID][]model.MenuItem)
 	var uncategorized []model.MenuItem
 	for _, item := range items {
@@ -196,14 +194,27 @@ func (h *RecipeHandler) preview(w http.ResponseWriter, r *http.Request) {
 		grouped[*item.CategoryID] = append(grouped[*item.CategoryID], item)
 	}
 
-	var groups []menuPreviewGroup
+	var groups []MenuPreviewGroup
 	for _, c := range categories {
 		if rs := grouped[c.ID]; len(rs) > 0 {
-			groups = append(groups, menuPreviewGroup{Name: c.Name, Items: rs})
+			groups = append(groups, MenuPreviewGroup{Name: c.Name, Items: rs})
 		}
 	}
 	if len(uncategorized) > 0 {
-		groups = append(groups, menuPreviewGroup{Name: "Uncategorized", Items: uncategorized})
+		groups = append(groups, MenuPreviewGroup{Name: "Uncategorized", Items: uncategorized})
+	}
+	return groups, nil
+}
+
+func (h *RecipeHandler) preview(w http.ResponseWriter, r *http.Request) {
+	pool := middleware.TenantPool(r.Context())
+	repo := repository.NewRecipeRepo(pool)
+
+	groups, err := GroupActiveMenu(r.Context(), repo)
+	if err != nil {
+		slog.Error("preview: list recipes", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
 	}
 
 	h.render.HTML(w, r, "menu_preview.html", map[string]any{
